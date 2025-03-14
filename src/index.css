@@ -1,0 +1,13 @@
+@tailwind base;
+@tailwind components;
+@tailwind utilities;
+
+/* Garantir que o cabeçalho não fique fixo apenas em dispositivos móveis */
+@media (max-width: 767px) {
+  /* Seletor mais específico para o cabeçalho principal */
+  .bg-blue-600.text-white.shadow-lg {
+    position: static !important;
+    top: auto !important;
+    z-index: auto !important;
+  }
+}
