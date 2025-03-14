@@ -17,6 +17,7 @@ export interface Project {
   profitMargin: number;
   totalCost: number;
   salePrice: number;
+  comments: string; // Comentários sobre o orçamento
 }
 
 export interface ProjectSummary {

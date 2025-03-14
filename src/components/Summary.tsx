@@ -153,30 +153,33 @@ export function Summary({ summary, profitMargin, onProfitMarginChange, onSavePro
             {renderLegend()}
           </div>
           
-          <div className="h-[180px] sm:h-[200px] lg:h-[220px] bg-gray-50 rounded-lg p-2 sm:p-4">
-            <ResponsiveContainer width="100%" height="100%">
-              <PieChart>
-                <Pie
-                  data={data}
-                  cx="50%"
-                  cy="50%"
-                  labelLine={false}
-                  outerRadius={window.innerWidth < 640 ? 60 : window.innerWidth < 1024 ? 80 : 70}
-                  fill="#8884d8"
-                  dataKey="value"
-                >
-                  {data.map((entry, index) => (
-                    <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
-                  ))}
-                </Pie>
-                <Tooltip 
-                  formatter={(value: number) => [
-                    `${((value / totalValue) * 100).toFixed(1)}%`,
-                    'Valor'
-                  ]}
-                />
-              </PieChart>
-            </ResponsiveContainer>
+          <div className="h-[250px] sm:h-[280px] lg:h-[300px] bg-gray-50 rounded-lg p-2 sm:p-4">
+            <h3 className="font-medium text-gray-700 mb-2 sm:mb-3 text-sm sm:text-base">Gráfico</h3>
+            <div className="h-[calc(100%-30px)]">
+              <ResponsiveContainer width="100%" height="100%">
+                <PieChart>
+                  <Pie
+                    data={data}
+                    cx="50%"
+                    cy="50%"
+                    labelLine={false}
+                    outerRadius={window.innerWidth < 640 ? 70 : window.innerWidth < 1024 ? 90 : 100}
+                    fill="#8884d8"
+                    dataKey="value"
+                  >
+                    {data.map((entry, index) => (
+                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                    ))}
+                  </Pie>
+                  <Tooltip 
+                    formatter={(value: number) => [
+                      `${((value / totalValue) * 100).toFixed(1)}%`,
+                      'Valor'
+                    ]}
+                  />
+                </PieChart>
+              </ResponsiveContainer>
+            </div>
           </div>
         </div>
       </div>

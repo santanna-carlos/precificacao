@@ -19,6 +19,7 @@ function App() {
   const [profitMargin, setProfitMargin] = useState(20);
   const [projectName, setProjectName] = useState('Novo Projeto');
   const [projectDate, setProjectDate] = useState<string>(new Date().toISOString().split('T')[0]); // Formato YYYY-MM-DD
+  const [projectComments, setProjectComments] = useState('');
   
   // Estado para controlar a visibilidade da barra lateral em dispositivos móveis
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -53,6 +54,7 @@ function App() {
         setProfitMargin(activeProject.profitMargin);
         setProjectName(activeProject.name);
         setProjectDate(activeProject.date || new Date().toISOString().split('T')[0]); // Usar data atual se não existir
+        setProjectComments(activeProject.comments || ''); // Carregar comentários ou string vazia se não existir
       }
     }
   }, [activeProjectId, projects]);
@@ -154,7 +156,8 @@ function App() {
       materials: [],
       profitMargin: 20,
       totalCost: 0,
-      salePrice: 0
+      salePrice: 0,
+      comments: ''
     };
     
     setProjects(prev => [...prev, newProject]);
@@ -186,6 +189,7 @@ function App() {
         setProfitMargin(20);
         setProjectName('Novo Projeto');
         setProjectDate(new Date().toISOString().split('T')[0]);
+        setProjectComments('');
       }
     }
   };
@@ -206,7 +210,8 @@ function App() {
             materials,
             profitMargin,
             totalCost: summary.totalCost,
-            salePrice: summary.salePrice
+            salePrice: summary.salePrice,
+            comments: projectComments
           }
         : project
     ));
@@ -330,6 +335,23 @@ function App() {
                     onRemove={(id) => handleRemoveExpense(id, setMaterials)}
                     onChange={(id, field, value) => handleExpenseChange(id, field, value, setMaterials)}
                   />
+
+                  {/* Seção de Comentários */}
+                  <div className="bg-white rounded-lg shadow-md p-4 sm:p-6">
+                    <h2 className="text-lg sm:text-xl font-semibold text-gray-800 mb-3 sm:mb-4 flex items-center gap-2">
+                      Comentários do Orçamento
+                    </h2>
+                    <div className="space-y-4">
+                      <div>
+                        <textarea
+                          className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 resize-y min-h-[100px]"
+                          placeholder="Adicione informações importantes sobre o projeto, especificações, prazos de entrega, etc."
+                          value={projectComments}
+                          onChange={(e) => setProjectComments(e.target.value)}
+                        />
+                      </div>
+                    </div>
+                  </div>
                 </div>
 
                 {/* Resumo do Projeto - Lateral direita em desktop, ocupa 1/4 */}
