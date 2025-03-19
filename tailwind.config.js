@@ -3,6 +3,9 @@ export default {
   content: ['./index.html', './src/**/*.{js,ts,jsx,tsx}'],
   theme: {
     extend: {
+      fontFamily: {
+        sans: ['Rubik', 'ui-sans-serif', 'system-ui', 'sans-serif'],
+      },
       fontSize: {
         '2xs': '0.625rem', // 10px
       },

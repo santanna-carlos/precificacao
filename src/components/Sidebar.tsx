@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus, FolderOpen, Trash2, Calendar, X } from 'lucide-react';
+import { Plus, FolderOpen, Trash2, Calendar, X, Users, LayoutDashboard } from 'lucide-react';
 import { Project } from '../types';
 
 interface SidebarProps {
@@ -8,7 +8,9 @@ interface SidebarProps {
   onSelectProject: (projectId: string) => void;
   onCreateProject: () => void;
   onDeleteProject: (projectId: string) => void;
-  onClose?: () => void; // Nova prop para fechar a barra lateral em dispositivos móveis
+  onClose?: () => void;
+  onClientsView?: () => void;
+  onProjectsKanbanView?: () => void; // Nova prop para mostrar a visão kanban
 }
 
 export function Sidebar({
@@ -17,15 +19,81 @@ export function Sidebar({
   onSelectProject,
   onCreateProject,
   onDeleteProject,
-  onClose
+  onClose,
+  onClientsView,
+  onProjectsKanbanView
 }: SidebarProps) {
-  // Ordenar projetos em ordem decrescente (do mais recente para o mais antigo)
-  const sortedProjects = [...projects].reverse();
+  // Função para abreviar texto se ultrapassar o limite de caracteres
+  const abbreviateText = (text: string, maxLength: number = 9): string => {
+    if (!text) return '';
+    return text.length > maxLength ? `${text.substring(0, maxLength)}...` : text;
+  };
+  
+  // Função para formatar a data no padrão dia-mes-ano
+  const formatDate = (dateString: string): string => {
+    if (!dateString) return '';
+    
+    try {
+      const date = new Date(dateString);
+      
+      // Verifica se a data é válida
+      if (isNaN(date.getTime())) return dateString;
+      
+      // Formata para DD-MM-YYYY
+      const day = date.getDate().toString().padStart(2, '0');
+      const month = (date.getMonth() + 1).toString().padStart(2, '0');
+      const year = date.getFullYear();
+      
+      return `${day}-${month}-${year}`;
+    } catch (error) {
+      // Em caso de erro na formatação, retorna a data original
+      return dateString;
+    }
+  };
   
   return (
     <div className="bg-gray-800 text-white w-64 flex flex-col h-screen shadow-lg">
-      <div className="p-4 border-b border-gray-700 flex justify-between items-center">
-        <h2 className="text-xl font-semibold">Meus Projetos</h2>
+      {/* Seção de cabeçalho com botão de clientes */}
+      <div 
+        className="p-4 border-b border-gray-700 flex justify-between items-center cursor-pointer hover:bg-gray-700"
+        onClick={() => {
+          if (onClientsView) {
+            onClientsView();
+          }
+          // Fechar a barra lateral em dispositivos móveis
+          if (onClose && window.innerWidth < 768) {
+            onClose();
+          }
+        }}
+      >
+        <div className="flex items-center gap-2">
+          <Users size={18} />
+          <h2 className="text-xl font-semibold">Meus Clientes</h2>
+        </div>
+        {/* Botão de fechamento visível apenas em dispositivos móveis */}
+        {onClose && (
+          <button 
+            className="text-gray-400 hover:text-white md:hidden" 
+            onClick={(e) => {
+              e.stopPropagation();
+              onClose();
+            }}
+            aria-label="Fechar menu"
+          >
+            <X size={20} />
+          </button>
+        )}
+      </div>
+
+      {/* Seção de cabeçalho para visualização kanban dos projetos */}
+      <div 
+        className="p-4 border-b border-gray-700 flex justify-between items-center cursor-pointer hover:bg-gray-700"
+        onClick={onProjectsKanbanView}
+      >
+        <div className="flex items-center gap-2">
+          <LayoutDashboard size={18} />
+          <h2 className="text-xl font-semibold">Meus Projetos</h2>
+        </div>
         {/* Botão de fechamento visível apenas em dispositivos móveis */}
         {onClose && (
           <button 
@@ -45,7 +113,7 @@ export function Sidebar({
           </div>
         ) : (
           <ul className="py-2">
-            {sortedProjects.map(project => (
+            {projects.map(project => (
               <li 
                 key={project.id}
                 className={`px-4 py-2 flex items-center justify-between hover:bg-gray-700 cursor-pointer ${
@@ -56,12 +124,15 @@ export function Sidebar({
                 <div className="flex flex-col">
                   <div className="flex items-center gap-2">
                     <FolderOpen size={18} />
-                    <span className="truncate">{project.name}</span>
+                    <span className="truncate">
+                      {project.clientName ? `${abbreviateText(project.clientName)} - ` : ''}
+                      {abbreviateText(project.name) || 'Projeto sem nome'}
+                    </span>
                   </div>
                   {project.date && (
                     <div className="flex items-center gap-1 text-xs text-gray-400 mt-1">
                       <Calendar size={12} />
-                      <span>{project.date}</span>
+                      <span>{formatDate(project.date)}</span>
                     </div>
                   )}
                 </div>

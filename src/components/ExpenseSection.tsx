@@ -50,46 +50,37 @@ export function ExpenseSection({ title, type, items, onAdd, onRemove, onChange }
               <React.Fragment key={item.id}>
                 <tr className="border-t">
                   <td className="px-2 sm:px-4 py-1 sm:py-2">
-                    <div className="flex flex-col sm:flex-row sm:items-center sm:gap-2">
-                      {item.type === 'Outro' ? (
-                        <>
-                          <div className="flex items-center w-full gap-1">
-                            <select
-                              value={item.type}
-                              onChange={(e) => onChange(item.id, 'type', e.target.value)}
-                              className="border rounded px-1 py-1 bg-white text-xs sm:text-base w-20 flex-shrink-0"
-                            >
-                              <option value="">Sel.</option>
-                              {EXPENSE_OPTIONS[type].map((option) => (
-                                <option key={option} value={option}>
-                                  {option.length > 7 ? option.substring(0, 7) + '...' : option}
-                                </option>
-                              ))}
-                            </select>
-                            <input
-                              type="text"
-                              placeholder="Especifique..."
-                              value={item.customType || ''}
-                              onChange={(e) => onChange(item.id, 'customType', e.target.value)}
-                              className="flex-1 min-w-0 border rounded px-1 py-1 bg-white text-xs sm:text-base"
-                            />
-                          </div>
-                        </>
-                      ) : (
-                        <select
-                          value={item.type}
-                          onChange={(e) => onChange(item.id, 'type', e.target.value)}
-                          className="w-full border rounded px-1 sm:px-2 py-1 bg-white text-xs sm:text-base"
-                        >
-                          <option value="">Selecione</option>
-                          {EXPENSE_OPTIONS[type].map((option) => (
-                            <option key={option} value={option}>
-                              {option}
-                            </option>
-                          ))}
-                        </select>
+                    <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2">
+                      <select
+                        value={item.type}
+                        onChange={(e) => onChange(item.id, 'type', e.target.value)}
+                        className="w-full border rounded px-1 sm:px-2 py-1 bg-white text-xs sm:text-base"
+                      >
+                        <option value="">Selecione</option>
+                        {EXPENSE_OPTIONS[type].map((option) => (
+                          <option key={option} value={option}>
+                            {option}
+                          </option>
+                        ))}
+                      </select>
+
+                      {item.type === 'Outro' && (
+                        <input
+                          type="text"
+                          placeholder="Digite o tipo personalizado..."
+                          value={item.customType || ''}
+                          onChange={(e) => onChange(item.id, 'customType', e.target.value)}
+                          className="w-full mt-1 sm:mt-0 border rounded px-1 sm:px-2 py-1 bg-white text-xs sm:text-base"
+                        />
                       )}
                     </div>
+
+                    {/* Exibir o tipo personalizado abaixo do select quando estiver no modo mobile */}
+                    {item.type === 'Outro' && item.customType && (
+                      <div className="text-xs text-blue-600 font-medium mt-1 sm:hidden">
+                        Tipo personalizado: {item.customType}
+                      </div>
+                    )}
                   </td>
                   <td className="px-2 sm:px-4 py-1 sm:py-2">
                     <input

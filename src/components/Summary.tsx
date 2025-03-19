@@ -29,7 +29,7 @@ export function Summary({ summary, profitMargin, onProfitMarginChange, onSavePro
           <span className="w-3 h-3 sm:w-4 sm:h-4 rounded-sm" style={{ backgroundColor: COLORS[index] }} />
           <span className="flex-1">{entry.name}</span>
           <span className="font-medium">
-            {((entry.value / totalValue) * 100).toFixed(1)}%
+            {totalValue > 0 ? `${((entry.value / totalValue) * 100).toFixed(1)}%` : '0%'}
           </span>
         </li>
       ))}
@@ -52,7 +52,7 @@ export function Summary({ summary, profitMargin, onProfitMarginChange, onSavePro
                 <div className="text-right">
                   <div>R$ {summary.fixedExpensesTotal.toFixed(2)}</div>
                   <div className="text-gray-500 text-2xs sm:text-xs">
-                    {((summary.fixedExpensesTotal / totalValue) * 100).toFixed(1)}%
+                    {totalValue > 0 ? `${((summary.fixedExpensesTotal / totalValue) * 100).toFixed(1)}%` : '0%'}
                   </div>
                 </div>
               </div>
@@ -61,7 +61,7 @@ export function Summary({ summary, profitMargin, onProfitMarginChange, onSavePro
                 <div className="text-right">
                   <div>R$ {summary.variableExpensesTotal.toFixed(2)}</div>
                   <div className="text-gray-500 text-2xs sm:text-xs">
-                    {((summary.variableExpensesTotal / totalValue) * 100).toFixed(1)}%
+                    {totalValue > 0 ? `${((summary.variableExpensesTotal / totalValue) * 100).toFixed(1)}%` : '0%'}
                   </div>
                 </div>
               </div>
@@ -70,7 +70,7 @@ export function Summary({ summary, profitMargin, onProfitMarginChange, onSavePro
                 <div className="text-right">
                   <div>R$ {summary.materialsTotal.toFixed(2)}</div>
                   <div className="text-gray-500 text-2xs sm:text-xs">
-                    {((summary.materialsTotal / totalValue) * 100).toFixed(1)}%
+                    {totalValue > 0 ? `${((summary.materialsTotal / totalValue) * 100).toFixed(1)}%` : '0%'}
                   </div>
                 </div>
               </div>
@@ -79,7 +79,7 @@ export function Summary({ summary, profitMargin, onProfitMarginChange, onSavePro
                 <div className="text-right">
                   <div>R$ {summary.totalCost.toFixed(2)}</div>
                   <div className="text-gray-500 text-2xs sm:text-xs">
-                    {((summary.totalCost / totalValue) * 100).toFixed(1)}%
+                    {totalValue > 0 ? `${((summary.totalCost / totalValue) * 100).toFixed(1)}%` : '0%'}
                   </div>
                 </div>
               </div>
@@ -118,13 +118,13 @@ export function Summary({ summary, profitMargin, onProfitMarginChange, onSavePro
                 <div className="text-right">
                   <div>R$ {summary.profitAmount.toFixed(2)}</div>
                   <div className="text-gray-500 text-2xs sm:text-xs">
-                    {((summary.profitAmount / totalValue) * 100).toFixed(1)}%
+                    {totalValue > 0 ? `${((summary.profitAmount / totalValue) * 100).toFixed(1)}%` : '0%'}
                   </div>
                 </div>
               </div>
               <div className="flex justify-between text-xs sm:text-sm">
                 <span className="text-gray-600">Markup:</span>
-                <span>{summary.markup.toFixed(2)}x</span>
+                <span>{summary.totalCost > 0 ? summary.markup.toFixed(2) : '1.00'}x</span>
               </div>
               <div className="flex justify-between font-medium text-sm sm:text-lg pt-1 sm:pt-2 border-t">
                 <span>Preço de Venda:</span>
@@ -138,10 +138,10 @@ export function Summary({ summary, profitMargin, onProfitMarginChange, onSavePro
             <h3 className="font-medium text-gray-700 mb-2 sm:mb-3 text-sm sm:text-base">Venda com Markup</h3>
             <div className="flex justify-between font-medium text-sm sm:text-lg">
               <span>Valor Total:</span>
-              <span className="text-green-600">R$ {summary.markupSalePrice.toFixed(2)}</span>
+              <span className="text-green-600">R$ {summary.totalCost > 0 ? summary.markupSalePrice.toFixed(2) : '0.00'}</span>
             </div>
             <div className="text-2xs sm:text-sm text-gray-500 mt-1 sm:mt-2">
-              Preço calculado utilizando o markup de {summary.markup.toFixed(2)}x sobre o custo total
+              Preço calculado utilizando o markup de {summary.totalCost > 0 ? summary.markup.toFixed(2) : '1.00'}x sobre o custo total
             </div>
           </div>
         </div>
@@ -173,7 +173,7 @@ export function Summary({ summary, profitMargin, onProfitMarginChange, onSavePro
                   </Pie>
                   <Tooltip 
                     formatter={(value: number) => [
-                      `${((value / totalValue) * 100).toFixed(1)}%`,
+                      `${totalValue > 0 ? ((value / totalValue) * 100).toFixed(1) : 0}%`,
                       'Valor'
                     ]}
                   />
