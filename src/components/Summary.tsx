@@ -7,12 +7,30 @@ interface SummaryProps {
   summary: ProjectSummary;
   profitMargin: number;
   onProfitMarginChange: (value: number) => void;
-  onSaveProject?: () => void; // Nova prop opcional
+  onSaveProject?: () => void; 
+  isDisabled?: boolean; 
+  priceType: 'normal' | 'markup'; 
+  onPriceTypeChange: (type: 'normal' | 'markup') => void; 
+  markupPercentage?: number; 
 }
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
 
-export function Summary({ summary, profitMargin, onProfitMarginChange, onSaveProject }: SummaryProps) {
+export function Summary({ 
+  summary, 
+  profitMargin, 
+  onProfitMarginChange, 
+  onSaveProject, 
+  isDisabled = false,
+  priceType = 'normal',
+  onPriceTypeChange
+}: SummaryProps) {
+  // Calcular o preço com markup (custo total * fator de markup)
+  const markupPrice = summary.totalCost * summary.markup;
+  
+  // Usar o preço apropriado com base no tipo selecionado
+  const displayPrice = priceType === 'normal' ? summary.salePrice : markupPrice;
+  
   const totalValue = summary.totalCost + summary.profitAmount;
   
   const data = [
@@ -100,53 +118,97 @@ export function Summary({ summary, profitMargin, onProfitMarginChange, onSavePro
                   max="100"
                   value={profitMargin}
                   onChange={(e) => onProfitMarginChange(Number(e.target.value))}
-                  className="w-full"
+                  className={`w-full ${isDisabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+                  disabled={isDisabled}
                 />
-                <span className="w-12 sm:w-16 text-center text-xs sm:text-sm">{profitMargin}%</span>
+                <span className={`w-12 sm:w-16 text-center text-xs sm:text-sm ${isDisabled ? 'opacity-50' : ''}`}>
+                  {profitMargin}%
+                </span>
               </div>
-            </div>
-          </div>
-        </div>
-
-        {/* Coluna 2: Preço Final */}
-        <div className="space-y-3 sm:space-y-4">
-          <div className="p-3 sm:p-4 bg-gray-50 rounded-lg">
-            <h3 className="font-medium text-gray-700 mb-2 sm:mb-3 text-sm sm:text-base">Preço Final</h3>
-            <div className="space-y-1 sm:space-y-2">
-              <div className="flex justify-between text-xs sm:text-sm">
-                <span className="text-gray-600">Lucro:</span>
-                <div className="text-right">
-                  <div>R$ {summary.profitAmount.toFixed(2)}</div>
-                  <div className="text-gray-500 text-2xs sm:text-xs">
-                    {totalValue > 0 ? `${((summary.profitAmount / totalValue) * 100).toFixed(1)}%` : '0%'}
-                  </div>
-                </div>
-              </div>
-              <div className="flex justify-between text-xs sm:text-sm">
-                <span className="text-gray-600">Markup:</span>
-                <span>{summary.totalCost > 0 ? summary.markup.toFixed(2) : '1.00'}x</span>
-              </div>
-              <div className="flex justify-between font-medium text-sm sm:text-lg pt-1 sm:pt-2 border-t">
-                <span>Preço de Venda:</span>
-                <span className="text-green-600">R$ {summary.salePrice.toFixed(2)}</span>
-              </div>
+              {isDisabled && (
+                <p className="text-xs text-amber-600 mt-1">
+                  Margem de lucro congelada (projeto em fase técnica)
+                </p>
+              )}
             </div>
           </div>
           
-          {/* Subcomponente separado para Venda com Markup */}
-          <div className="p-3 sm:p-4 bg-gray-50 rounded-lg">
-            <h3 className="font-medium text-gray-700 mb-2 sm:mb-3 text-sm sm:text-base">Venda com Markup</h3>
-            <div className="flex justify-between font-medium text-sm sm:text-lg">
-              <span>Valor Total:</span>
-              <span className="text-green-600">R$ {summary.totalCost > 0 ? summary.markupSalePrice.toFixed(2) : '0.00'}</span>
+          {/* Seção de Preços */}
+          <div className="p-3 sm:p-4 bg-gray-50 rounded-lg mt-3 sm:mt-4">
+            <h3 className="font-medium text-gray-700 mb-2 sm:mb-3 text-sm sm:text-base">Preços</h3>
+            
+            {/* Preço de Venda */}
+            <div className="mb-3 sm:mb-4">
+              <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+                Preço de Venda
+              </label>
+              <div className="text-lg sm:text-xl font-medium text-green-600">
+                R$ {summary.salePrice.toFixed(2)}
+              </div>
+              <div className="text-xs text-gray-500 mt-1">
+                Margem de Lucro: {profitMargin}%
+              </div>
             </div>
-            <div className="text-2xs sm:text-sm text-gray-500 mt-1 sm:mt-2">
-              Preço calculado utilizando o markup de {summary.totalCost > 0 ? summary.markup.toFixed(2) : '1.00'}x sobre o custo total
+            
+            {/* Preço com Markup */}
+            <div className="mb-3 sm:mb-4">
+              <label className="block text-xs sm:text-sm font-medium text-gray-700 mb-1">
+                Preço com Markup
+              </label>
+              <div className="text-lg sm:text-xl font-medium text-green-600">
+                R$ {markupPrice.toFixed(2)}
+              </div>
+              <div className="text-xs text-gray-500 mt-1">
+                Markup: {summary.totalCost > 0 ? summary.markup.toFixed(2) : '1.00'}x sobre o custo total
+              </div>
+            </div>
+            
+            {/* Seleção de Preço Final */}
+            <div className="mt-4 pt-3 border-t border-gray-200">
+              <label className="block text-xs sm:text-sm font-semibold text-gray-800 mb-2">
+                Preço Final a Repassar ao Cliente
+              </label>
+              <div className="flex flex-col space-y-2">
+                <label className="inline-flex items-center">
+                  <input
+                    type="radio"
+                    className="form-radio text-blue-600"
+                    name="priceType"
+                    value="normal"
+                    checked={priceType === 'normal'}
+                    onChange={() => onPriceTypeChange('normal')}
+                    disabled={isDisabled}
+                  />
+                  <span className="ml-2 text-xs sm:text-sm">Preço de Venda (R$ {summary.salePrice.toFixed(2)})</span>
+                </label>
+                <label className="inline-flex items-center">
+                  <input
+                    type="radio"
+                    className="form-radio text-blue-600"
+                    name="priceType"
+                    value="markup"
+                    checked={priceType === 'markup'}
+                    onChange={() => onPriceTypeChange('markup')}
+                    disabled={isDisabled}
+                  />
+                  <span className="ml-2 text-xs sm:text-sm">
+                    Preço com Markup (R$ {markupPrice.toFixed(2)})
+                  </span>
+                </label>
+              </div>
+              
+              {/* Preço selecionado destacado */}
+              <div className="mt-3 p-2 bg-blue-50 rounded-md border border-blue-100">
+                <div className="text-xs font-medium text-blue-700">Preço selecionado:</div>
+                <div className="text-lg sm:text-xl font-bold text-blue-800">
+                  R$ {displayPrice.toFixed(2)}
+                </div>
+              </div>
             </div>
           </div>
         </div>
 
-        {/* Coluna 3: Distribuição dos Custos e Gráfico */}
+        {/* Coluna 2: Preço Final e Gráfico */}
         <div className="space-y-3 sm:space-y-4">
           <div className="p-3 sm:p-4 bg-gray-50 rounded-lg">
             <h3 className="font-medium text-gray-700 mb-2 sm:mb-3 text-sm sm:text-base">Distribuição dos Custos</h3>
@@ -172,15 +234,35 @@ export function Summary({ summary, profitMargin, onProfitMarginChange, onSavePro
                     ))}
                   </Pie>
                   <Tooltip 
-                    formatter={(value: number) => [
-                      `${totalValue > 0 ? ((value / totalValue) * 100).toFixed(1) : 0}%`,
-                      'Valor'
-                    ]}
+                    formatter={(value: number, name: string, props: any) => {
+                      // Usar o nome da categoria em vez do termo genérico "Valor"
+                      const entry = data.find(item => item.value === value);
+                      return [
+                        `${totalValue > 0 ? ((value / totalValue) * 100).toFixed(1) : 0}%`,
+                        entry ? entry.name : 'Valor'
+                      ];
+                    }}
                   />
                 </PieChart>
               </ResponsiveContainer>
             </div>
           </div>
+        </div>
+
+        {/* Coluna 3: Venda com Markup */}
+        <div className="space-y-3 sm:space-y-4">
+          {priceType === 'markup' && (
+            <div className="p-3 sm:p-4 bg-gray-50 rounded-lg">
+              <h3 className="font-medium text-gray-700 mb-2 sm:mb-3 text-sm sm:text-base">Adicional de Markup</h3>
+              <div className="flex justify-between font-medium text-sm sm:text-lg">
+                <span>Valor adicional:</span>
+                <span className="text-green-600">R$ {(markupPrice - summary.salePrice).toFixed(2)}</span>
+              </div>
+              <div className="text-2xs sm:text-sm text-gray-500 mt-1 sm:mt-2">
+                Valor extra em relação ao preço de venda normal
+              </div>
+            </div>
+          )}
         </div>
       </div>
     </div>
