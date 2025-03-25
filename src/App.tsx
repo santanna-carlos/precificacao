@@ -414,8 +414,10 @@ function App() {
       : 0;
     
     const totalCost = fixedExpensesTotal + variableExpensesTotal + materialsTotal;
-    const profitMarginToUse = projectToCalculate.profitMargin || 20; // Usa 20% como padrão se não tiver margem definida
-    const salePrice = totalCost / (1 - profitMarginToUse / 100);
+    const profitMarginToUse = projectToCalculate.profitMargin !== undefined ? projectToCalculate.profitMargin : 20;
+    
+    // Quando a margem é 0%, o preço de venda deve ser igual ao custo total
+    const salePrice = profitMarginToUse === 0 ? totalCost : totalCost / (1 - profitMarginToUse / 100);
     const profitAmount = salePrice - totalCost;
     
     // Markup é a razão entre o preço de venda e o custo de materiais
