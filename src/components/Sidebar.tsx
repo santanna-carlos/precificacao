@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus, Trash2, Users, LayoutDashboard, Building2, BarChart3 } from 'lucide-react';
+import { Plus, Trash2, Users, LayoutDashboard, Building2, BarChart3, LogOut } from 'lucide-react';
 import { Project, WorkshopSettings } from '../types';
 
 interface SidebarProps {
@@ -14,7 +14,12 @@ interface SidebarProps {
   onMyWorkshopView?: () => void; 
   onMyWorkshopSettingsView?: () => void;
   onFinancialSummaryView?: () => void;
+  onLogout?: () => void;
   workshopSettings?: WorkshopSettings;
+  onMyWorkshopActive?: boolean;
+  onFinancialSummaryActive?: boolean;
+  onClientsListActive?: boolean;
+  onProjectsKanbanActive?: boolean;
 }
 
 export function Sidebar({
@@ -29,7 +34,12 @@ export function Sidebar({
   onMyWorkshopView,
   onMyWorkshopSettingsView,
   onFinancialSummaryView,
-  workshopSettings
+  onLogout,
+  workshopSettings,
+  onMyWorkshopActive,
+  onFinancialSummaryActive,
+  onClientsListActive,
+  onProjectsKanbanActive
 }: SidebarProps) {
   // Função para abreviar texto se ultrapassar o limite de caracteres
   const abbreviateText = (text: string, maxLength: number = 9): string => {
@@ -126,7 +136,7 @@ export function Sidebar({
       <div 
         className={`p-4 border-b border-gray-700/50 flex justify-between items-center cursor-pointer 
           transition-all duration-200 hover:bg-gray-700/50 relative overflow-hidden group
-          ${onMyWorkshopView ? 'sidebar-active' : ''}`}
+          ${onMyWorkshopActive ? 'sidebar-active' : ''}`}
         onClick={() => {
           if (onMyWorkshopView) {
             onMyWorkshopView();
@@ -150,7 +160,7 @@ export function Sidebar({
       <div 
         className={`p-4 border-b border-gray-700/50 flex justify-between items-center cursor-pointer 
           transition-all duration-200 hover:bg-gray-700/50 relative overflow-hidden group
-          ${onFinancialSummaryView ? 'sidebar-active' : ''}`}
+          ${onFinancialSummaryActive ? 'sidebar-active' : ''}`}
         onClick={() => {
           if (onFinancialSummaryView) {
             onFinancialSummaryView();
@@ -174,7 +184,7 @@ export function Sidebar({
       <div 
         className={`p-4 border-b border-gray-700/50 flex justify-between items-center cursor-pointer 
           transition-all duration-200 hover:bg-gray-700/50 relative overflow-hidden group
-          ${onClientsView ? 'sidebar-active' : ''}`}
+          ${onClientsListActive ? 'sidebar-active' : ''}`}
         onClick={() => {
           if (onClientsView) {
             onClientsView();
@@ -185,20 +195,20 @@ export function Sidebar({
           }
         }}
       >
-        <div className="flex items-center gap-3 z-10">
-          <div className="p-1.5 rounded-md bg-purple-500/20 group-hover:bg-purple-500/30 transition-colors">
-            <Users size={18} className="text-purple-400" />
+        <div className="flex items-center">
+          <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center mr-3">
+            <Users size={20} className="text-purple-400" />
           </div>
-          <h2 className="text-base font-medium">Meus Clientes</h2>
+          <span>Meus Clientes</span>
         </div>
-        <div className="absolute left-0 h-full w-1 bg-purple-500 transform -translate-x-full group-hover:translate-x-0 transition-transform duration-200"></div>
+        <div className="w-1 h-full absolute left-0 top-0 bg-purple-500 scale-y-0 group-hover:scale-y-100 transition-transform origin-bottom"></div>
       </div>
       
       {/* Seção de Meus Projetos (QUARTO) */}
       <div 
         className={`p-4 border-b border-gray-700/50 flex justify-between items-center cursor-pointer 
           transition-all duration-200 hover:bg-gray-700/50 relative overflow-hidden group
-          ${onProjectsKanbanView ? 'sidebar-active' : ''}`}
+          ${onProjectsKanbanActive ? 'sidebar-active' : ''}`}
         onClick={() => {
           if (onProjectsKanbanView) {
             onProjectsKanbanView();
@@ -274,6 +284,22 @@ export function Sidebar({
           Novo Projeto
         </button>
       </div>
+      
+      {onLogout && (
+        <div 
+          className="mt-auto p-4 border-t border-gray-700/50 flex justify-between items-center cursor-pointer 
+            transition-all duration-200 hover:bg-gray-700/50 relative overflow-hidden group"
+          onClick={onLogout}
+        >
+          <div className="flex items-center">
+            <div className="w-10 h-10 rounded-lg bg-red-500/10 flex items-center justify-center mr-3">
+              <LogOut size={20} className="text-red-400" />
+            </div>
+            <span>Sair</span>
+          </div>
+          <div className="w-1 h-full absolute left-0 top-0 bg-red-500 scale-y-0 group-hover:scale-y-100 transition-transform origin-bottom"></div>
+        </div>
+      )}
     </div>
   );
 }

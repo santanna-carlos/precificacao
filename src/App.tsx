@@ -12,12 +12,16 @@ import { ClientsList } from './components/ClientsList';
 import { ProjectsKanban } from './components/ProjectsKanban';
 import { MyWorkshop } from './components/MyWorkshop';
 import { FinancialSummary } from './components/FinancialSummary';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
+import { Login } from './components/Login';
 
 // IDENTIFICADOR ÚNICO: ATUALIZAÇÃO 14 MARÇO 2025 9:16
 console.log('VERSÃO ATUALIZADA DO APP - 14 MARÇO 2025 9:16');
 
-function App() {
-  console.log('App está sendo renderizado'); // Log de depuração
+// Componente principal que usa o contexto de autenticação
+function AppContent() {
+  const { user, loading, signOut } = useAuth();
+  console.log('AppContent está sendo renderizado'); // Log de depuração
   
   // Estado para controlar a exibição do kanban de projetos e da lista de clientes
   const [showProjectsKanban, setShowProjectsKanban] = useState(true);
@@ -1033,15 +1037,26 @@ function App() {
   };
 
   // Funções para gerenciamento de clientes
-  const handleAddClient = (client: Omit<Client, 'id' | 'createdAt'>) => {
-    const newClient: Client = {
-      ...client,
-      id: crypto.randomUUID(),
-      createdAt: new Date().toISOString(),
-      lastModified: new Date().toISOString()
+  const handleAddClient: React.MouseEventHandler<HTMLButtonElement> = (event) => {
+    // Criar um novo cliente com valores padrão
+    const newClient: Omit<Client, "id" | "createdAt"> = {
+      name: '',
+      phone: ''
     };
-    setClients(prevClients => [...prevClients, newClient]);
-    return newClient;
+    
+    // Adicionar o cliente à lista
+    const clientWithId: Client = {
+      ...newClient,
+      id: crypto.randomUUID(),
+      createdAt: new Date().toISOString()
+    };
+    
+    setClients(prevClients => [...prevClients, clientWithId]);
+    
+    // Salvar a lista atualizada no localStorage
+    localStorage.setItem('clients', JSON.stringify([...clients, clientWithId]));
+    
+    return clientWithId;
   };
 
   const handleUpdateClient = (updatedClient: Client) => {
@@ -1314,392 +1329,304 @@ function App() {
     );
   };
 
+  // Se estiver carregando, mostrar um indicador de carregamento
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
+          <p className="mt-4 text-gray-600">Carregando...</p>
+        </div>
+      </div>
+    );
+  }
+  
+  // Se não houver usuário autenticado, mostrar a tela de login
+  if (!user) {
+    return <Login />;
+  }
+  
+  // Se houver usuário autenticado, mostrar a aplicação principal
   return (
-    <>
-      {showClientTracking ? (
-        <ClientTrackingView />
-      ) : (
-        <div className="flex h-screen bg-gray-100">
-          {/* Sidebar - Responsiva */}
-          <div className="relative z-50">
-            {/* Backdrop escuro para dispositivos móveis - apenas visível quando o sidebar está aberto */}
-            {sidebarOpen && (
-              <div 
-                className="md:hidden fixed inset-0 bg-black bg-opacity-50" 
-                onClick={() => setSidebarOpen(false)}
-              />
-            )}
-            
-            {/* Container do Sidebar */}
-            <div 
-              className={`fixed md:relative h-full z-50 transform ${
-                sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-              } md:translate-x-0 transition-transform duration-300 ease-in-out`}
-            >
-              <Sidebar
-                projects={projects}
-                activeProjectId={activeProjectId}
-                workshopSettings={workshopSettings}
-                onSelectProject={(projectId) => {
-                  handleSelectProject(projectId);
-                  setShowClientsList(false);
-                  setShowProjectsKanban(false);
-                  setShowMyWorkshop(false);
-                  setShowFinancialSummary(false);
-                  if (window.innerWidth < 768) {
-                    setSidebarOpen(false);
-                  }
-                }}
-                onCreateProject={handleCreateProject}
-                onDeleteProject={handleDeleteProject}
-                onClose={() => setSidebarOpen(false)}
-                onClientsView={handleShowClientsList}
-                onProjectsKanbanView={handleShowProjectsKanban}
-                onMyWorkshopView={handleShowMyWorkshop}
-                onFinancialSummaryView={handleShowFinancialSummary}
-              />
-            </div>
-          </div>
+    <div className="flex h-screen bg-gray-100">
+      {/* Sidebar para navegação */}
+      <Sidebar
+        projects={projects}
+        activeProjectId={activeProjectId}
+        onSelectProject={handleSelectProject}
+        onCreateProject={handleCreateProject}
+        onDeleteProject={handleDeleteProject}
+        onClose={() => setSidebarOpen(false)}
+        onClientsView={handleShowClientsList}
+        onProjectsKanbanView={handleShowProjectsKanban}
+        onMyWorkshopView={handleShowMyWorkshop}
+        onFinancialSummaryView={handleShowFinancialSummary}
+        workshopSettings={workshopSettings}
+        onLogout={signOut}
+        onMyWorkshopActive={showMyWorkshop}
+        onFinancialSummaryActive={showFinancialSummary}
+        onClientsListActive={showClientsList}
+        onProjectsKanbanActive={showProjectsKanban}
+      />
+      
+      {/* Conteúdo principal */}
+      <div className="flex-1 overflow-auto">
+        {/* Barra superior com botão de menu para dispositivos móveis */}
+        <div className="bg-white shadow-sm p-4 flex justify-between items-center sticky top-0 z-10">
+          <button
+            className="md:hidden p-2 rounded-md hover:bg-gray-100"
+            onClick={toggleSidebar}
+          >
+            {sidebarOpen ? <X size={24} /> : <Menu size={24} />}
+          </button>
           
-          {/* Main Content */}
-          <div className="flex-1 flex flex-col overflow-auto">
-            {/* Cabeçalho - Sem classes que o tornem fixo */}
-            <div className="bg-blue-600 text-white shadow-lg w-full">
-              <div className="container mx-auto px-2 sm:px-4 py-3 sm:py-6">
-                {/* Linha do título */}
-                <div className="flex items-center justify-between mb-6">
-                  <div className="flex items-center gap-2 sm:gap-3">
-                    {/* Botão para alternar a barra lateral em dispositivos móveis */}
-                    <button 
-                      className="md:hidden mr-1 sm:mr-2 text-white" 
-                      onClick={toggleSidebar}
-                      aria-label="Toggle sidebar"
-                    >
-                      {sidebarOpen ? <X size={20} className="sm:hidden" /> : <Menu size={20} className="sm:hidden" />}
-                      {sidebarOpen ? <X size={24} className="hidden sm:block" /> : <Menu size={24} className="hidden sm:block" />}
-                    </button>
-                    <Calculator size={24} className="sm:hidden" />
-                    <Calculator size={32} className="hidden sm:block" />
-                    <h1 className="text-2xl font-bold hidden sm:inline">Precificação e Gestão Inteligente para Marceneiros</h1>
-                    <h1 className="text-lg font-bold sm:hidden">Precificador</h1>
-                  </div>
-                </div>
-                  
-                {/* Linha dos inputs - só aparece quando há um projeto ativo */}
-                {activeProjectId && (
-                  <div className="w-full">
-                    <div className="flex flex-wrap items-center gap-2">
-                      <div className="relative w-full sm:w-auto sm:max-w-[300px]">
-                        <input
-                          type="text"
-                          value={clientName}
-                          onChange={handleClientNameChange}
-                          className="px-2 sm:px-3 py-1 h-9 rounded text-gray-800 font-medium text-sm sm:text-base w-full"
-                          placeholder="Nome do Cliente"
-                          ref={clientInputRef}
-                          onFocus={() => {
-                            // Mostrar sugestões ao focar, se houver texto
-                            if (clientName.trim()) {
-                              handleClientNameChange({ target: { value: clientName } } as React.ChangeEvent<HTMLInputElement>);
+          <h1 className="text-xl font-semibold text-gray-800">
+            {showProjectsKanban && "Meus Projetos"}
+            {showClientsList && "Meus Clientes"}
+            {showMyWorkshop && "Minha Marcenaria"}
+            {showFinancialSummary && "Resumo Financeiro"}
+            {activeProjectId && (projectName || "Novo Projeto")}
+          </h1>
+          
+          <div className="flex items-center gap-2">
+            {/* Botões de ação específicos para cada visualização */}
+            {showClientsList && (
+              <button
+                className="p-2 rounded-md bg-blue-600 text-white hover:bg-blue-700 flex items-center gap-1"
+                onClick={handleAddClient}
+              >
+                <Plus size={18} />
+                <span className="hidden sm:inline">Novo Cliente</span>
+              </button>
+            )}
+          </div>
+        </div>
+        
+        {/* Conteúdo principal */}
+        <div className="p-2 sm:p-4">
+          {showMyWorkshop ? (
+            <MyWorkshop 
+              workshopSettings={workshopSettings}
+              onSaveSettings={handleSaveWorkshopSettings}
+            />
+          ) : showClientsList ? (
+            <ClientsList 
+              projects={projects} 
+              clients={clients} 
+              onAddClient={handleAddClient} 
+              onUpdateClient={handleUpdateClient} 
+              onDeleteClient={handleDeleteClient}
+              onSelectProject={(projectId) => {
+                handleSelectProject(projectId);
+                setShowClientsList(false);
+                setShowProjectsKanban(false);
+                setShowMyWorkshop(false);
+                setShowFinancialSummary(false);
+              }}
+            />
+          ) : showFinancialSummary ? (
+            <FinancialSummary projects={projects} />
+          ) : showProjectsKanban ? (
+            <ProjectsKanban 
+              projects={projects} 
+              onSelectProject={(projectId) => {
+                handleSelectProject(projectId);
+                setShowClientsList(false);
+                setShowProjectsKanban(false);
+                setShowMyWorkshop(false);
+                setShowFinancialSummary(false);
+              }} 
+              onDeleteProject={handleDeleteProject}
+            />
+          ) : activeProjectId ? (
+            <div className="container mx-auto">
+              {/* Layout principal com grid para desktop */}
+              <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6">
+                {/* Coluna das despesas - ocupa 3/4 em desktop */}
+                <div className="lg:col-span-3 space-y-4 sm:space-y-6 order-1 lg:order-1">
+                  {/* Verificar se o projeto técnico está aprovado */}
+                  {projectStages.projetoTecnico?.completed && (
+                    <div className="bg-amber-100 p-4 rounded-lg mb-4 flex items-center gap-2 text-amber-800 border border-amber-300">
+                      <AlertCircle size={20} />
+                      <div>
+                        <p className="font-semibold">Orçamento congelado</p>
+                        <p className="text-sm">O orçamento deste projeto não pode ser alterado porque o projeto técnico já foi aprovado.</p>
+                      </div>
+                    </div>
+                  )}
+                   
+                  <ExpenseSection
+                    title="Despesas Fixas"
+                    type="fixed"
+                    items={fixedExpenses}
+                    onAdd={() => handleAddExpense(setFixedExpenses, 'fixed')}
+                    onRemove={(id) => handleRemoveExpense(id, setFixedExpenses)}
+                    onChange={(id, field, value) => 
+                      handleExpenseChange(
+                        id, 
+                        field as keyof ExpenseItem, 
+                        value, 
+                        setFixedExpenses
+                      )
+                    }
+                    dailyCost={projectStages.projetoTecnico?.completed && frozenDailyCost !== undefined 
+                      ? frozenDailyCost 
+                      : calculateDailyCost()}
+                    useWorkshopSettings={useWorkshopForFixedExpenses}
+                    fixedExpenseDays={fixedExpenseDays}
+                    onChangeDays={handleUpdateFixedExpenseDays}
+                    onToggleCalculationMode={handleToggleFixedExpenseMode}
+                    disabled={projectStages.projetoTecnico?.completed}
+                  />
+
+                  <ExpenseSection
+                    title="Despesas Variáveis"
+                    type="variable"
+                    items={variableExpenses}
+                    onAdd={() => handleAddExpense(setVariableExpenses, 'variable')}
+                    onRemove={(id) => handleRemoveExpense(id, setVariableExpenses)}
+                    onChange={(id, field, value) => 
+                      handleExpenseChange(
+                        id, 
+                        field as keyof ExpenseItem, 
+                        value, 
+                        setVariableExpenses
+                      )
+                    }
+                    disabled={projectStages.projetoTecnico?.completed}
+                  />
+
+                  <ExpenseSection
+                    title="Materiais"
+                    type="material"
+                    items={materials}
+                    onAdd={() => handleAddExpense(setMaterials, 'material')}
+                    onRemove={(id) => handleRemoveExpense(id, setMaterials)}
+                    onChange={(id, field, value) => 
+                      handleExpenseChange(
+                        id, 
+                        field as keyof ExpenseItem, 
+                        value, 
+                        setMaterials
+                      )
+                    }
+                    disabled={projectStages.projetoTecnico?.completed}
+                  />
+
+                  {/* Seção de Comentários */}
+                  <div className="bg-white rounded-lg shadow-md p-4 sm:p-6">
+                    <h2 className="text-lg sm:text-xl font-semibold text-gray-800 mb-3 sm:mb-4 flex items-center gap-2">
+                      Comentários do Orçamento
+                    </h2>
+                    <div className="space-y-4">
+                      <div>
+                        <textarea
+                          className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[100px] resize-none sm:resize-none"
+                          placeholder="Adicione informações importantes sobre o projeto, especificações, prazos de entrega, etc."
+                          value={projectComments}
+                          onChange={(e) => {
+                            setProjectComments(e.target.value);
+                            // Ajustar altura automaticamente em todas as telas
+                            e.target.style.height = 'auto';
+                            e.target.style.height = `${e.target.scrollHeight}px`;
+                          }}
+                          onFocus={(e) => {
+                            // Definir altura mínima ao focar
+                            if (!e.target.value) {
+                              e.target.style.height = '100px';
+                            }
+                          }}
+                          ref={(textarea) => {
+                            if (textarea) {
+                              // Ajustar altura inicial com base no conteúdo
+                              textarea.style.height = 'auto';
+                              textarea.style.height = projectComments 
+                                ? `${Math.max(100, textarea.scrollHeight)}px` 
+                                : '100px';
                             }
                           }}
                         />
-                        {showClientSuggestions && clientSuggestions.length > 0 && (
-                          <div className="absolute z-50 mt-1 w-full bg-white border border-gray-200 rounded-md shadow-lg max-h-60 overflow-auto">
-                            <ul className="py-1">
-                              {clientSuggestions.map((suggestion, index) => (
-                                <li 
-                                  key={index}
-                                  className="client-suggestion-item px-3 py-2 hover:bg-blue-50 cursor-pointer flex items-center text-gray-800"
-                                  onMouseDown={(e) => {
-                                    // Usar onMouseDown em vez de onClick para garantir que o evento seja capturado antes do blur
-                                    e.preventDefault();
-                                    console.log('Clicou na sugestão (mousedown):', suggestion);
-                                    handleSelectClientSuggestion(suggestion);
-                                  }}
-                                >
-                                  <Search size={14} className="mr-2" />
-                                  {suggestion}
-                                </li>
-                              ))}
-                            </ul>
-                          </div>
-                        )}
-                      </div>
-                      <input
-                        type="text"
-                        value={projectName}
-                        onChange={(e) => {
-                          setProjectName(e.target.value);
-                        }}
-                        className="px-2 sm:px-3 py-1 h-9 rounded text-gray-800 font-medium text-sm sm:text-base w-full sm:w-auto sm:max-w-[300px]"
-                        placeholder="Nome do Projeto"
-                      />
-                      <input
-                        type="tel"
-                        value={contactPhone}
-                        onChange={handleContactPhoneChange}
-                        className="px-2 sm:px-3 py-1 h-9 rounded text-gray-800 font-medium text-sm sm:text-base w-full sm:w-auto sm:max-w-[300px]"
-                        placeholder="Celular"
-                      />
-                      <input
-                        type="date"
-                        value={projectDate}
-                        onChange={handleProjectDateChange}
-                        className="px-2 sm:px-3 py-1 h-9 rounded text-gray-800 font-medium text-sm sm:text-base w-full sm:w-auto"
-                        title="Data de Criação"
-                      />
-                      <button
-                        className="flex items-center justify-center gap-2 px-4 py-1 h-9 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
-                        onClick={handleSaveProject}
-                      >
-                        <Save size={16} />
-                        <span>Salvar</span>
-                      </button>
-                      <button
-                        className="flex items-center justify-center gap-2 px-4 py-1 h-9 bg-blue-700 text-white rounded-md hover:bg-blue-800 transition-colors"
-                        onClick={handleDuplicateProject}
-                        title="Duplicar projeto"
-                      >
-                        <Copy size={16} />
-                        <span className="hidden sm:inline">Duplicar</span>
-                      </button>
-                    </div>
-                  </div>
-                )}
-              </div>
-            </div>
-
-            {/* Barra de Estágios do Projeto */}
-            {activeProjectId && (
-              <ProjectStagesBar 
-                stages={projectStages} 
-                onChange={handleStageChange}
-                projectId={activeProjectId}
-                clientName={clientName}
-                projectName={projectName}
-                onUpdateProject={handleUpdateProject}
-              />
-            )}
-
-            {/* Conteúdo principal */}
-            <div className="flex-1 p-2 sm:p-4">
-              {showMyWorkshop ? (
-                <MyWorkshop 
-                  workshopSettings={workshopSettings}
-                  onSaveSettings={handleSaveWorkshopSettings}
-                />
-              ) : showClientsList ? (
-                <ClientsList 
-                  projects={projects} 
-                  clients={clients} 
-                  onAddClient={handleAddClient} 
-                  onUpdateClient={handleUpdateClient} 
-                  onDeleteClient={handleDeleteClient}
-                  onSelectProject={(projectId) => {
-                    handleSelectProject(projectId);
-                    setShowClientsList(false);
-                    setShowProjectsKanban(false);
-                    setShowMyWorkshop(false);
-                    setShowFinancialSummary(false);
-                  }}
-                />
-              ) : showFinancialSummary ? (
-                <FinancialSummary projects={projects} />
-              ) : showProjectsKanban ? (
-                <ProjectsKanban 
-                  projects={projects} 
-                  onSelectProject={(projectId) => {
-                    handleSelectProject(projectId);
-                    setShowClientsList(false);
-                    setShowProjectsKanban(false);
-                    setShowMyWorkshop(false);
-                    setShowFinancialSummary(false);
-                  }} 
-                  onDeleteProject={handleDeleteProject}
-                />
-              ) : activeProjectId ? (
-                <div className="container mx-auto">
-                  {/* Layout principal com grid para desktop */}
-                  <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6">
-                    {/* Coluna das despesas - ocupa 3/4 em desktop */}
-                    <div className="lg:col-span-3 space-y-4 sm:space-y-6 order-1 lg:order-1">
-                      {/* Verificar se o projeto técnico está aprovado */}
-                      {projectStages.projetoTecnico?.completed && (
-                        <div className="bg-amber-100 p-4 rounded-lg mb-4 flex items-center gap-2 text-amber-800 border border-amber-300">
-                          <AlertCircle size={20} />
-                          <div>
-                            <p className="font-semibold">Orçamento congelado</p>
-                            <p className="text-sm">O orçamento deste projeto não pode ser alterado porque o projeto técnico já foi aprovado.</p>
-                          </div>
-                        </div>
-                      )}
-                       
-                      <ExpenseSection
-                        title="Despesas Fixas"
-                        type="fixed"
-                        items={fixedExpenses}
-                        onAdd={() => handleAddExpense(setFixedExpenses, 'fixed')}
-                        onRemove={(id) => handleRemoveExpense(id, setFixedExpenses)}
-                        onChange={(id, field, value) => 
-                          handleExpenseChange(
-                            id, 
-                            field as keyof ExpenseItem, 
-                            value, 
-                            setFixedExpenses
-                          )
-                        }
-                        dailyCost={projectStages.projetoTecnico?.completed && frozenDailyCost !== undefined 
-                          ? frozenDailyCost 
-                          : calculateDailyCost()}
-                        useWorkshopSettings={useWorkshopForFixedExpenses}
-                        fixedExpenseDays={fixedExpenseDays}
-                        onChangeDays={handleUpdateFixedExpenseDays}
-                        onToggleCalculationMode={handleToggleFixedExpenseMode}
-                        disabled={projectStages.projetoTecnico?.completed}
-                      />
-
-                      <ExpenseSection
-                        title="Despesas Variáveis"
-                        type="variable"
-                        items={variableExpenses}
-                        onAdd={() => handleAddExpense(setVariableExpenses, 'variable')}
-                        onRemove={(id) => handleRemoveExpense(id, setVariableExpenses)}
-                        onChange={(id, field, value) => 
-                          handleExpenseChange(
-                            id, 
-                            field as keyof ExpenseItem, 
-                            value, 
-                            setVariableExpenses
-                          )
-                        }
-                        disabled={projectStages.projetoTecnico?.completed}
-                      />
-
-                      <ExpenseSection
-                        title="Materiais"
-                        type="material"
-                        items={materials}
-                        onAdd={() => handleAddExpense(setMaterials, 'material')}
-                        onRemove={(id) => handleRemoveExpense(id, setMaterials)}
-                        onChange={(id, field, value) => 
-                          handleExpenseChange(
-                            id, 
-                            field as keyof ExpenseItem, 
-                            value, 
-                            setMaterials
-                          )
-                        }
-                        disabled={projectStages.projetoTecnico?.completed}
-                      />
-
-                      {/* Seção de Comentários */}
-                      <div className="bg-white rounded-lg shadow-md p-4 sm:p-6">
-                        <h2 className="text-lg sm:text-xl font-semibold text-gray-800 mb-3 sm:mb-4 flex items-center gap-2">
-                          Comentários do Orçamento
-                        </h2>
-                        <div className="space-y-4">
-                          <div>
-                            <textarea
-                              className="w-full p-3 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500 min-h-[100px] resize-none sm:resize-none"
-                              placeholder="Adicione informações importantes sobre o projeto, especificações, prazos de entrega, etc."
-                              value={projectComments}
-                              onChange={(e) => {
-                                setProjectComments(e.target.value);
-                                // Ajustar altura automaticamente em todas as telas
-                                e.target.style.height = 'auto';
-                                e.target.style.height = `${e.target.scrollHeight}px`;
-                              }}
-                              onFocus={(e) => {
-                                // Definir altura mínima ao focar
-                                if (!e.target.value) {
-                                  e.target.style.height = '100px';
-                                }
-                              }}
-                              ref={(textarea) => {
-                                if (textarea) {
-                                  // Ajustar altura inicial com base no conteúdo
-                                  textarea.style.height = 'auto';
-                                  textarea.style.height = projectComments 
-                                    ? `${Math.max(100, textarea.scrollHeight)}px` 
-                                    : '100px';
-                                }
-                              }}
-                            />
-                          </div>
-                        </div>
-                      </div>
-
-                      {/* Botão Salvar no final da página */}
-                      <div className="mt-4 sm:mt-6 flex justify-center">
-                        <button
-                          className="flex items-center justify-center gap-2 px-4 py-2 sm:px-6 sm:py-3 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors mx-auto"
-                          onClick={handleSaveProject}
-                        >
-                          <Save size={20} />
-                          Salvar Projeto
-                        </button>
-                      </div>
-                    </div>
-
-                    {/* Resumo do Projeto - Lateral direita em desktop, ocupa 1/4 */}
-                    <div className="lg:col-span-1 order-2 lg:order-2">
-                      <div className="lg:sticky lg:top-4">
-                        <Summary 
-                          summary={calculateSummary()} 
-                          profitMargin={profitMargin}
-                          onProfitMarginChange={setProfitMargin}
-                          isDisabled={activeProjectId && projects.find(p => p.id === activeProjectId)?.stages?.projetoTecnico?.completed}
-                          onSaveProject={handleSaveProject}
-                          priceType={priceType}
-                          onPriceTypeChange={setPriceType}
-                          markupPercentage={markupPercentage}
-                        />
-                        {/* Data da última modificação */}
-                        <div className="mt-2 text-xs text-gray-400 text-right">
-                          {activeProjectId && (
-                            <>
-                              {(() => {
-                                const currentProject = projects.find(p => p.id === activeProjectId);
-                                return currentProject?.lastModified ? (
-                                  <>
-                                    Última modificação: {new Date(currentProject.lastModified).toLocaleDateString('pt-BR', { 
-                                      day: '2-digit', 
-                                      month: '2-digit', 
-                                      year: 'numeric',
-                                      hour: '2-digit',
-                                      minute: '2-digit'
-                                    })}
-                                  </>
-                                ) : 'Projeto não salvo';
-                              })()}
-                            </>
-                          )}
-                        </div>
                       </div>
                     </div>
                   </div>
-                </div>
-              ) : (
-                <div className="h-full flex items-center justify-center">
-                  <div className="text-center">
-                    <h2 className="text-2xl font-semibold text-gray-700 mb-4">Nenhum projeto selecionado</h2>
-                    <p className="text-gray-500 mb-6">Crie um novo projeto ou selecione um existente para começar</p>
+
+                  {/* Botão Salvar no final da página */}
+                  <div className="mt-4 sm:mt-6 flex justify-center">
                     <button
-                      className="flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors mx-auto"
-                      onClick={handleCreateProject}
+                      className="flex items-center justify-center gap-2 px-4 py-2 sm:px-6 sm:py-3 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors mx-auto"
+                      onClick={handleSaveProject}
                     >
-                      <Plus size={20} />
-                      Criar Novo Projeto
+                      <Save size={20} />
+                      Salvar Projeto
                     </button>
                   </div>
                 </div>
-              )}
+
+                {/* Resumo do Projeto - Lateral direita em desktop, ocupa 1/4 */}
+                <div className="lg:col-span-1 order-2 lg:order-2">
+                  <div className="lg:sticky lg:top-4">
+                    <Summary 
+                      summary={calculateSummary()} 
+                      profitMargin={profitMargin}
+                      onProfitMarginChange={setProfitMargin}
+                      isDisabled={activeProjectId && projects.find(p => p.id === activeProjectId)?.stages?.projetoTecnico?.completed}
+                      onSaveProject={handleSaveProject}
+                      priceType={priceType}
+                      onPriceTypeChange={setPriceType}
+                      markupPercentage={markupPercentage}
+                    />
+                    {/* Data da última modificação */}
+                    <div className="mt-2 text-xs text-gray-400 text-right">
+                      {activeProjectId && (
+                        <>
+                          {(() => {
+                            const currentProject = projects.find(p => p.id === activeProjectId);
+                            return currentProject?.lastModified ? (
+                              <>
+                                Última modificação: {new Date(currentProject.lastModified).toLocaleDateString('pt-BR', { 
+                                  day: '2-digit', 
+                                  month: '2-digit', 
+                                  year: 'numeric',
+                                  hour: '2-digit',
+                                  minute: '2-digit'
+                                })}
+                              </>
+                            ) : 'Projeto não salvo';
+                          })()}
+                        </>
+                      )}
+                    </div>
+                  </div>
+                </div>
+              </div>
             </div>
-          </div>
+          ) : (
+            <div className="h-full flex items-center justify-center">
+              <div className="text-center">
+                <h2 className="text-2xl font-semibold text-gray-700 mb-4">Nenhum projeto selecionado</h2>
+                <p className="text-gray-500 mb-6">Crie um novo projeto ou selecione um existente para começar</p>
+                <button
+                  className="flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors mx-auto"
+                  onClick={handleCreateProject}
+                >
+                  <Plus size={20} />
+                  Criar Novo Projeto
+                </button>
+              </div>
+            </div>
+          )}
         </div>
-      )}
-    </>
+      </div>
+    </div>
+  );
+}
+
+// Componente App que envolve AppContent com o AuthProvider
+function App() {
+  return (
+    <AuthProvider>
+      <AppContent />
+    </AuthProvider>
   );
 }
 
