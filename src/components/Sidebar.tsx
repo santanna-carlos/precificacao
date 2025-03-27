@@ -1,6 +1,7 @@
 import React from 'react';
 import { Plus, Trash2, Users, LayoutDashboard, Building2, BarChart3, LogOut } from 'lucide-react';
 import { Project, WorkshopSettings } from '../types';
+import { useAuth } from '../contexts/AuthContext';
 
 interface SidebarProps {
   projects: Project[];
@@ -14,12 +15,7 @@ interface SidebarProps {
   onMyWorkshopView?: () => void; 
   onMyWorkshopSettingsView?: () => void;
   onFinancialSummaryView?: () => void;
-  onLogout?: () => void;
   workshopSettings?: WorkshopSettings;
-  onMyWorkshopActive?: boolean;
-  onFinancialSummaryActive?: boolean;
-  onClientsListActive?: boolean;
-  onProjectsKanbanActive?: boolean;
 }
 
 export function Sidebar({
@@ -34,13 +30,15 @@ export function Sidebar({
   onMyWorkshopView,
   onMyWorkshopSettingsView,
   onFinancialSummaryView,
-  onLogout,
-  workshopSettings,
-  onMyWorkshopActive,
-  onFinancialSummaryActive,
-  onClientsListActive,
-  onProjectsKanbanActive
+  workshopSettings
 }: SidebarProps) {
+  const { signOut } = useAuth();
+
+  // Função para lidar com o logout
+  const handleLogout = async () => {
+    await signOut();
+  };
+
   // Função para abreviar texto se ultrapassar o limite de caracteres
   const abbreviateText = (text: string, maxLength: number = 9): string => {
     if (!text) return '';
@@ -136,7 +134,7 @@ export function Sidebar({
       <div 
         className={`p-4 border-b border-gray-700/50 flex justify-between items-center cursor-pointer 
           transition-all duration-200 hover:bg-gray-700/50 relative overflow-hidden group
-          ${onMyWorkshopActive ? 'sidebar-active' : ''}`}
+          ${onMyWorkshopView ? 'sidebar-active' : ''}`}
         onClick={() => {
           if (onMyWorkshopView) {
             onMyWorkshopView();
@@ -160,7 +158,7 @@ export function Sidebar({
       <div 
         className={`p-4 border-b border-gray-700/50 flex justify-between items-center cursor-pointer 
           transition-all duration-200 hover:bg-gray-700/50 relative overflow-hidden group
-          ${onFinancialSummaryActive ? 'sidebar-active' : ''}`}
+          ${onFinancialSummaryView ? 'sidebar-active' : ''}`}
         onClick={() => {
           if (onFinancialSummaryView) {
             onFinancialSummaryView();
@@ -184,7 +182,7 @@ export function Sidebar({
       <div 
         className={`p-4 border-b border-gray-700/50 flex justify-between items-center cursor-pointer 
           transition-all duration-200 hover:bg-gray-700/50 relative overflow-hidden group
-          ${onClientsListActive ? 'sidebar-active' : ''}`}
+          ${onClientsView ? 'sidebar-active' : ''}`}
         onClick={() => {
           if (onClientsView) {
             onClientsView();
@@ -195,20 +193,20 @@ export function Sidebar({
           }
         }}
       >
-        <div className="flex items-center">
-          <div className="w-10 h-10 rounded-lg bg-purple-500/10 flex items-center justify-center mr-3">
-            <Users size={20} className="text-purple-400" />
+        <div className="flex items-center gap-3 z-10">
+          <div className="p-1.5 rounded-md bg-purple-500/20 group-hover:bg-purple-500/30 transition-colors">
+            <Users size={18} className="text-purple-400" />
           </div>
-          <span>Meus Clientes</span>
+          <h2 className="text-base font-medium">Meus Clientes</h2>
         </div>
-        <div className="w-1 h-full absolute left-0 top-0 bg-purple-500 scale-y-0 group-hover:scale-y-100 transition-transform origin-bottom"></div>
+        <div className="absolute left-0 h-full w-1 bg-purple-500 transform -translate-x-full group-hover:translate-x-0 transition-transform duration-200"></div>
       </div>
       
       {/* Seção de Meus Projetos (QUARTO) */}
       <div 
         className={`p-4 border-b border-gray-700/50 flex justify-between items-center cursor-pointer 
           transition-all duration-200 hover:bg-gray-700/50 relative overflow-hidden group
-          ${onProjectsKanbanActive ? 'sidebar-active' : ''}`}
+          ${onProjectsKanbanView ? 'sidebar-active' : ''}`}
         onClick={() => {
           if (onProjectsKanbanView) {
             onProjectsKanbanView();
@@ -283,23 +281,14 @@ export function Sidebar({
           <Plus size={20} />
           Novo Projeto
         </button>
-      </div>
-      
-      {onLogout && (
-        <div 
-          className="mt-auto p-4 border-t border-gray-700/50 flex justify-between items-center cursor-pointer 
-            transition-all duration-200 hover:bg-gray-700/50 relative overflow-hidden group"
-          onClick={onLogout}
+        <button
+          className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors mt-2"
+          onClick={handleLogout}
         >
-          <div className="flex items-center">
-            <div className="w-10 h-10 rounded-lg bg-red-500/10 flex items-center justify-center mr-3">
-              <LogOut size={20} className="text-red-400" />
-            </div>
-            <span>Sair</span>
-          </div>
-          <div className="w-1 h-full absolute left-0 top-0 bg-red-500 scale-y-0 group-hover:scale-y-100 transition-transform origin-bottom"></div>
-        </div>
-      )}
+          <LogOut size={20} />
+          Sair
+        </button>
+      </div>
     </div>
   );
 }

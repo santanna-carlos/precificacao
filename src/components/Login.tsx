@@ -1,8 +1,9 @@
 import React, { useState } from 'react';
-import { login, resetPassword } from '../auth';
 import { LogIn, Mail, Lock, AlertCircle } from 'lucide-react';
+import { useAuth } from '../contexts/AuthContext';
 
 export function Login() {
+  const { signIn, resetPassword } = useAuth();
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
   const [error, setError] = useState<string | null>(null);
@@ -22,7 +23,7 @@ export function Login() {
       setLoading(true);
       setError(null);
       
-      const { error } = await login(email, password);
+      const { error } = await signIn(email, password);
       
       if (error) {
         setError(error.message || 'Erro ao fazer login');
@@ -66,8 +67,8 @@ export function Login() {
     <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-gray-800 to-gray-900 p-4">
       <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
         <div className="text-center mb-8">
-          <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-blue-400 bg-clip-text text-transparent mb-2">Calculadora de Precificação</h1>
-          <p className="text-gray-600">Para marceneiros e profissionais da madeira</p>
+          <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-blue-400 bg-clip-text text-transparent mb-2">Gestão e Precificação para Marceneiros</h1>
+          
         </div>
         
         {error && (
