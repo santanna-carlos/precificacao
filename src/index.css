@@ -8,6 +8,21 @@
 @layer base {
   html {
     font-family: 'Rubik', sans-serif;
+    height: 100%;
+    -webkit-overflow-scrolling: touch; /* Melhora a rolagem em dispositivos iOS */
+  }
+  
+  body {
+    min-height: 100%;
+    overflow-x: hidden;
+    -webkit-tap-highlight-color: transparent; /* Remove o highlight ao tocar em elementos */
+  }
+  
+  /* Corrige problemas de rolagem em dispositivos móveis */
+  #root {
+    display: flex;
+    flex-direction: column;
+    min-height: 100vh;
   }
 }
 
@@ -18,5 +33,11 @@
     position: static !important;
     top: auto !important;
     z-index: auto !important;
+  }
+  
+  /* Melhorar a experiência de rolagem em dispositivos móveis */
+  body, html {
+    overflow-y: auto;
+    overscroll-behavior-y: contain; /* Previne o efeito de "bounce" em alguns navegadores */
   }
 }

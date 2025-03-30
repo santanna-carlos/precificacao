@@ -101,8 +101,15 @@ export function Sidebar({
     return status === 'toStart' || status === 'inProgress';
   });
   
-  // Invertemos a ordem dos projetos para que os últimos adicionados apareçam primeiro
-  const reversedProjects = [...filteredProjects].reverse();
+  // Ordenar projetos por data de criação (mais recentes primeiro)
+  const sortedProjects = [...filteredProjects].sort((a, b) => {
+    // Usar a data do projeto como critério de ordenação
+    const dateA = new Date(a.date || '');
+    const dateB = new Date(b.date || '');
+    
+    // Ordem decrescente (mais recentes primeiro)
+    return dateB.getTime() - dateA.getTime();
+  });
   
   // Define a cor do indicador baseado no status
   const getStatusIndicatorColor = (project: Project): string => {
@@ -229,17 +236,17 @@ export function Sidebar({
       </div>
       
       <div className="flex-1 overflow-y-auto">
-        {filteredProjects.length === 0 ? (
+        {sortedProjects.length === 0 ? (
           <div className="p-4 text-gray-400 text-center">
             Nenhum projeto ativo encontrado
           </div>
         ) : (
           <div className="pt-2">
             <div className="px-4 py-2 text-gray-400 text-xs font-medium uppercase tracking-wider">
-              Projetos Ativos ({filteredProjects.length})
+              Projetos Ativos ({sortedProjects.length})
             </div>
             <ul className="pb-2">
-              {reversedProjects.map(project => (
+              {sortedProjects.map(project => (
                 <li 
                   key={project.id}
                   className={`px-4 py-2 flex items-center justify-between hover:bg-gray-700/50 cursor-pointer ${

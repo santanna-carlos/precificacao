@@ -102,30 +102,67 @@ export const ProjectStagesBar: React.FC<ProjectStagesBarProps> = ({
     }
     
     const baseUrl = window.location.origin;
-    const shareUrl = `${baseUrl}?tracking=${projectId}`;
+    // Garantir que o link inclua a barra no final do origin se necessário
+    const formattedBaseUrl = baseUrl.endsWith('/') ? baseUrl : `${baseUrl}/`;
+    // Usar formato de query string padrão
+    const shareUrl = `${formattedBaseUrl}?tracking=${encodeURIComponent(projectId)}`;
     
-    navigator.clipboard.writeText(shareUrl)
-      .then(() => {
-        setShowCopyConfirmation(true);
-        setTimeout(() => setShowCopyConfirmation(false), 3000);
-      })
-      .catch(err => {
-        console.error('Erro ao copiar link: ', err);
-        alert('Não foi possível copiar o link. Por favor, tente novamente.');
-      });
-  };
-
-  useEffect(() => {
-    if (projectId) {
-      const projects = JSON.parse(localStorage.getItem('projects') || '[]');
-      const currentProject = projects.find((p: any) => p.id === projectId);
-      if (currentProject && currentProject.estimatedCompletionDate) {
-        setEstimatedDate(currentProject.estimatedCompletionDate);
-      } else {
-        setEstimatedDate('');
+    // Tentar copiar para a área de transferência
+    try {
+      navigator.clipboard.writeText(shareUrl)
+        .then(() => {
+          setShowCopyConfirmation(true);
+          setTimeout(() => setShowCopyConfirmation(false), 3000);
+          
+          // Salvar o link no localStorage para garantir que funcione mesmo sem conexão com o banco
+          const trackingLinks = JSON.parse(localStorage.getItem('trackingLinks') || '{}');
+          trackingLinks[projectId] = {
+            url: shareUrl,
+            projectId: projectId,
+            clientName: clientName,
+            projectName: projectName,
+            createdAt: new Date().toISOString()
+          };
+          localStorage.setItem('trackingLinks', JSON.stringify(trackingLinks));
+        })
+        .catch(err => {
+          console.error('Erro ao copiar link: ', err);
+          alert('Não foi possível copiar o link. Por favor, tente novamente.');
+        });
+    } catch (err) {
+      // Fallback para navegadores que não suportam clipboard API
+      const textArea = document.createElement('textarea');
+      textArea.value = shareUrl;
+      document.body.appendChild(textArea);
+      textArea.focus();
+      textArea.select();
+      
+      try {
+        const successful = document.execCommand('copy');
+        if (successful) {
+          setShowCopyConfirmation(true);
+          setTimeout(() => setShowCopyConfirmation(false), 3000);
+          
+          // Salvar o link no localStorage mesmo usando o método alternativo
+          const trackingLinks = JSON.parse(localStorage.getItem('trackingLinks') || '{}');
+          trackingLinks[projectId] = {
+            url: shareUrl,
+            projectId: projectId,
+            clientName: clientName,
+            projectName: projectName,
+            createdAt: new Date().toISOString()
+          };
+          localStorage.setItem('trackingLinks', JSON.stringify(trackingLinks));
+        } else {
+          alert('Não foi possível copiar o link. Por favor, selecione e copie manualmente: ' + shareUrl);
+        }
+      } catch (err) {
+        alert('Não foi possível copiar o link. Por favor, selecione e copie manualmente: ' + shareUrl);
       }
+      
+      document.body.removeChild(textArea);
     }
-  }, [projectId]);
+  };
 
   const handleDateChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const newDate = e.target.value;
@@ -143,6 +180,18 @@ export const ProjectStagesBar: React.FC<ProjectStagesBarProps> = ({
       localStorage.setItem('projects', JSON.stringify(updatedProjects));
     }
   };
+
+  useEffect(() => {
+    if (projectId) {
+      const projects = JSON.parse(localStorage.getItem('projects') || '[]');
+      const currentProject = projects.find((p: any) => p.id === projectId);
+      if (currentProject && currentProject.estimatedCompletionDate) {
+        setEstimatedDate(currentProject.estimatedCompletionDate);
+      } else {
+        setEstimatedDate('');
+      }
+    }
+  }, [projectId]);
 
   return (
     <div className="bg-gray-100 border-b border-gray-300 py-3 px-2 sm:px-4">

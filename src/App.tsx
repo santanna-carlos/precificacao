@@ -18,6 +18,262 @@ import { Login } from './components/Login';
 import { getProjects, createProject, updateProject, deleteProject, getProject } from './services/projectService';
 import { getClients, createClient, updateClient, deleteClient } from './services/clientService';
 import { getWorkshopSettings, saveWorkshopSettings } from './services/workshopService';
+import { supabase } from './supabase';
+
+const ClientTrackingView = () => {
+  const [project, setProject] = useState<Project | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [error, setError] = useState<string | null>(null);
+
+  useEffect(() => {
+    const loadProject = async () => {
+      try {
+        // Obter o ID do projeto da URL
+        const urlParams = new URLSearchParams(window.location.search);
+        const projectId = urlParams.get('tracking');
+        
+        if (!projectId) {
+          setError("Link de rastreamento inválido");
+          setLoading(false);
+          return;
+        }
+
+        console.log("Buscando projeto com ID:", projectId);
+        
+        // Tentar buscar do Supabase diretamente sem autenticação
+        const { data, error } = await supabase
+          .from('projects')
+          .select('*')
+          .eq('id', projectId)
+          .single();
+        
+        if (error) {
+          console.error("Erro ao buscar projeto do Supabase:", error);
+          
+          // Tentar buscar do localStorage
+          const localProjects = JSON.parse(localStorage.getItem('projects') || '[]');
+          const localProject = localProjects.find((p: any) => p.id === projectId);
+          
+          if (localProject) {
+            console.log("Projeto encontrado no localStorage:", localProject);
+            setProject(localProject);
+            setLoading(false);
+            return;
+          }
+          
+          setError("Projeto não encontrado");
+          setLoading(false);
+          return;
+        }
+        
+        console.log("Projeto encontrado no Supabase:", data);
+        setProject(data);
+        setLoading(false);
+      } catch (error) {
+        console.error('Erro ao carregar projeto do Supabase:', error);
+        setError("Erro ao carregar dados do projeto");
+        setLoading(false);
+      }
+    };
+
+    loadProject();
+  }, []);
+
+  if (loading) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100">
+        <div className="bg-white p-8 rounded-lg shadow-md max-w-md w-full">
+          <div className="text-center">
+            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
+            <h2 className="mt-4 text-lg font-medium text-gray-900">Carregando...</h2>
+            <p className="mt-1 text-sm text-gray-500">
+              Aguarde enquanto carregamos as informações do projeto.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+
+  if (error || !project) {
+    return (
+      <div className="min-h-screen flex items-center justify-center bg-gray-100">
+        <div className="bg-white p-8 rounded-lg shadow-md max-w-md w-full">
+          <div className="text-center">
+            <AlertCircle className="mx-auto h-12 w-12 text-red-500" />
+            <h2 className="mt-2 text-lg font-medium text-gray-900">
+              {error || "Projeto não encontrado"}
+            </h2>
+            <p className="mt-1 text-sm text-gray-500">
+              O link que você acessou não corresponde a nenhum projeto ativo.
+            </p>
+          </div>
+        </div>
+      </div>
+    );
+  }
+  
+  const isCanceled = project.stages?.projetoCancelado?.completed || false;
+  const cancelDate = project.stages?.projetoCancelado?.date 
+    ? new Date(project.stages.projetoCancelado.date).toLocaleDateString('pt-BR') 
+    : '';
+  
+  const isProjectCompleted = project.stages?.instalacao?.completed || false;
+  const completionDate = project.stages?.instalacao?.date 
+    ? new Date(project.stages.instalacao.date).toLocaleDateString('pt-BR') 
+    : '';
+
+  const formattedEstimatedDate = project.estimatedCompletionDate 
+    ? (() => {
+        const date = new Date(project.estimatedCompletionDate);
+        const localDate = new Date(date.getTime() + date.getTimezoneOffset() * 60000);
+        return localDate.toLocaleDateString('pt-BR', {
+          day: '2-digit',
+          month: '2-digit',
+          year: 'numeric'
+        });
+      })()
+    : null;
+
+  const stagesArray = PROJECT_STAGES.filter(stage => stage.id !== 'projetoCancelado');
+
+  return (
+    <div className="min-h-screen bg-gray-100">
+      <div className="py-6 px-4 sm:px-6 lg:px-8">
+        <div className="max-w-3xl mx-auto">
+          <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6">
+            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-blue-500 to-indigo-600 text-white">
+              <h1 className="text-2xl font-bold">Acompanhamento de Projeto</h1>
+              <p className="mt-1 text-lg">{project.clientName || project.client?.name || ''} - {project.name || project.projectName || ''}</p>
+              <p className="mt-1 text-sm opacity-80">
+                Iniciado em: {new Date(project.date).toLocaleDateString('pt-BR', { 
+                  day: '2-digit', 
+                  month: '2-digit', 
+                  year: 'numeric',
+                  hour: '2-digit',
+                  minute: '2-digit'
+                })}
+              </p>
+              {formattedEstimatedDate && (
+                <p className="mt-1 text-sm opacity-80">
+                  Data prevista de entrega: {formattedEstimatedDate}
+                </p>
+              )}
+            </div>
+            
+            {isCanceled && (
+              <div className="p-4 bg-red-50 border-l-4 border-red-500">
+                <div className="flex items-center">
+                  <XCircle className="h-5 w-5 text-red-500 mr-2" />
+                  <p className="text-sm text-red-700 font-medium">
+                    Este projeto foi cancelado em {cancelDate}
+                  </p>
+                </div>
+              </div>
+            )}
+            
+            {isProjectCompleted && !isCanceled && (
+              <div className="p-4 bg-green-50 border-l-4 border-green-500">
+                <div className="flex items-center">
+                  <Check className="h-5 w-5 text-green-500 mr-2" />
+                  <p className="text-sm text-green-700 font-medium">
+                    Projeto finalizado com sucesso em {completionDate}
+                  </p>
+                </div>
+                <p className="mt-1 text-sm text-green-600 ml-7">
+                  Agradecemos pela confiança! Esperamos que esteja satisfeito com o resultado.
+                </p>
+              </div>
+            )}
+          </div>
+          
+          <div className="bg-white rounded-lg shadow-md overflow-hidden">
+            <div className="p-4 border-b border-gray-200">
+              <h2 className="text-lg font-medium text-gray-900">Status do Projeto</h2>
+            </div>
+            
+            <div className="p-4">
+              <div className="flow-root">
+                <ul className="-mb-8">
+                  {stagesArray
+                    .map((stage) => {
+                      const stageKey = stage.id as keyof ProjectStages;
+                      return {
+                        ...stage,
+                        completed: project.stages?.[stageKey]?.completed || false,
+                        date: project.stages?.[stageKey]?.date || null
+                      };
+                    })
+                    .map((stage, index) => (
+                      <li key={stage.id}>
+                        <div className="relative pb-8">
+                          {index !== stagesArray.length - 1 && stage.id !== 'instalacao' && (
+                            <span
+                              className="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200"
+                              aria-hidden="true"
+                            />
+                          )}
+                          <div className="relative flex space-x-3">
+                            <div>
+                              <span className={`h-8 w-8 rounded-full flex items-center justify-center ring-8 ring-white ${
+                                project.stages?.[stage.id as keyof ProjectStages]?.completed 
+                                  ? 'bg-green-500' 
+                                  : isCanceled 
+                                    ? 'bg-gray-300' 
+                                    : index === stagesArray.findIndex(s => !project.stages?.[s.id as keyof ProjectStages]?.completed) 
+                                      ? 'bg-blue-500 animate-pulse' 
+                                      : 'bg-gray-300'
+                              }`}>
+                                {project.stages?.[stage.id as keyof ProjectStages]?.completed ? (
+                                  <Check className="h-5 w-5 text-white" />
+                                ) : (
+                                  <span className="h-2 w-2 rounded-full bg-white" />
+                                )}
+                              </span>
+                            </div>
+                            <div className="min-w-0 flex-1 pt-1.5 flex justify-between space-x-4">
+                              <div>
+                                <p className={`text-sm font-medium ${
+                                  project.stages?.[stage.id as keyof ProjectStages]?.completed 
+                                    ? 'text-gray-900' 
+                                    : isCanceled 
+                                      ? 'text-gray-500' 
+                                      : index === stagesArray.findIndex(s => !project.stages?.[s.id as keyof ProjectStages]?.completed) 
+                                        ? 'text-blue-600' 
+                                        : 'text-gray-500'
+                                }`}>
+                                  {stage.label}
+                                </p>
+                              </div>
+                              <div className="text-right text-sm whitespace-nowrap text-gray-500">
+                                {stage.date && (
+                                  <time dateTime={stage.date}>{new Date(stage.date).toLocaleDateString('pt-BR')}</time>
+                                )}
+                              </div>
+                            </div>
+                          </div>
+                        </div>
+                      </li>
+                    ))}
+                </ul>
+              </div>
+            </div>
+          </div>
+          
+          <div className="mt-6 text-center text-sm text-gray-500">
+            <p>Este é um acompanhamento em tempo real do seu projeto.</p>
+            <p className="mt-1">Para mais informações, entre em contato pelo telefone informado.</p>
+            {formattedEstimatedDate && (
+              <p className="mt-4 text-center text-sm text-blue-600 font-medium">
+                Data prevista de entrega: {formattedEstimatedDate}
+              </p>
+            )}
+          </div>
+        </div>
+      </div>
+    </div>
+  );
+};
 
 function App() {
   const { user, loading, signOut } = useAuth();
@@ -204,16 +460,63 @@ function App() {
         setClients(clientsData || []);
         
         // Carregar configurações da marcenaria
-        const { data: workshopData, error: workshopError } = await getWorkshopSettings();
-        if (workshopError) throw workshopError;
-        setWorkshopSettings(workshopData || {
-          id: '',
-          workingDaysPerMonth: 22,
-          workshopName: null,
-          logoImage: null,
-          expenses: [],
-          lastUpdated: new Date().toISOString(),
-        });
+        const loadWorkshopSettings = async () => {
+          if (!user) return;
+          
+          try {
+            // Tentar carregar do localStorage primeiro para garantir que temos dados imediatamente
+            const localStorageSettings = localStorage.getItem('workshopSettings');
+            if (localStorageSettings) {
+              const parsedSettings = JSON.parse(localStorageSettings);
+              setWorkshopSettings(parsedSettings);
+              console.log('Configurações da marcenaria carregadas do localStorage');
+            }
+            
+            // Tentar carregar do Supabase
+            const { data, error } = await getWorkshopSettings();
+            
+            if (error) {
+              console.error('Erro ao carregar configurações da marcenaria do Supabase:', error);
+              // Se não temos dados locais e houve erro, criar configurações padrão
+              if (!localStorageSettings) {
+                const defaultSettings = {
+                  id: '',
+                  workingDaysPerMonth: 22,
+                  workshopName: '',
+                  logoImage: null,
+                  expenses: [],
+                  lastUpdated: new Date().toISOString()
+                };
+                setWorkshopSettings(defaultSettings);
+                localStorage.setItem('workshopSettings', JSON.stringify(defaultSettings));
+              }
+            } else if (data) {
+              // Se carregou com sucesso do Supabase, atualizar o estado e o localStorage
+              setWorkshopSettings(data);
+              localStorage.setItem('workshopSettings', JSON.stringify(data));
+              console.log('Configurações da marcenaria atualizadas do Supabase');
+            }
+          } catch (error) {
+            console.error('Erro ao carregar configurações da marcenaria:', error);
+            // Em caso de exceção, verificar se temos dados locais
+            const localStorageSettings = localStorage.getItem('workshopSettings');
+            if (!localStorageSettings) {
+              // Se não temos dados locais, criar configurações padrão
+              const defaultSettings = {
+                id: '',
+                workingDaysPerMonth: 22,
+                workshopName: null,
+                logoImage: null,
+                expenses: [],
+                lastUpdated: new Date().toISOString()
+              };
+              setWorkshopSettings(defaultSettings);
+              localStorage.setItem('workshopSettings', JSON.stringify(defaultSettings));
+            }
+          }
+        };
+        
+        loadWorkshopSettings();
         
         // Verificar se há um parâmetro de tracking na URL
         const urlParams = new URLSearchParams(window.location.search);
@@ -222,29 +525,45 @@ function App() {
         // Só definir o estado de navegação se não houver um estado salvo
         if (!hasStoredState) {
           if (trackingParam) {
+            console.log('Parâmetro de tracking encontrado:', trackingParam);
+            
+            // Verificar se o projeto existe no Supabase
             const projectExists = projectsData?.some(project => project.id === trackingParam);
             
-            if (projectExists) {
-              setTrackingProjectId(trackingParam);
+            // Verificar também no localStorage (para casos onde o projeto pode não estar no Supabase ainda)
+            const localProjects = JSON.parse(localStorage.getItem('projects') || '[]');
+            const localProjectExists = localProjects.some((p: any) => p.id === trackingParam);
+            
+            // Verificar no registro de links de tracking
+            const trackingLinks = JSON.parse(localStorage.getItem('trackingLinks') || '{}');
+            const trackingLinkExists = trackingLinks[trackingParam];
+            
+            if (projectExists || localProjectExists || trackingLinkExists) {
+              console.log('Projeto de tracking encontrado, exibindo visualização de cliente');
               setShowClientTracking(true);
               
               setShowProjectsKanban(false);
               setShowClientsList(false);
               setShowMyWorkshop(false);
               setShowFinancialSummary(false);
+              setShowUserProfile(false);
               setActiveProjectId(null);
             } else {
+              console.log('Projeto de tracking não encontrado');
               setShowProjectsKanban(true);
               setShowClientsList(false);
               setShowMyWorkshop(false);
               setShowFinancialSummary(false);
+              setShowUserProfile(false);
               setActiveProjectId(null);
+              alert('O link de acompanhamento que você tentou acessar não é válido ou o projeto não existe mais.');
             }
           } else {
             setShowProjectsKanban(true);
             setShowClientsList(false);
             setShowMyWorkshop(false);
             setShowFinancialSummary(false);
+            setShowUserProfile(false);
             setActiveProjectId(null);
           }
         }
@@ -258,7 +577,7 @@ function App() {
           workshopName: null,
           logoImage: null,
           expenses: [],
-          lastUpdated: new Date().toISOString(),
+          lastUpdated: new Date().toISOString()
         });
       }
     };
@@ -283,7 +602,7 @@ function App() {
         workshopName: null,
         logoImage: null,
         expenses: [],
-        lastUpdated: new Date().toISOString(),
+        lastUpdated: new Date().toISOString()
       });
     }
   }, [user, loading]);
@@ -301,7 +620,6 @@ function App() {
         setVariableExpenses(activeProject.variableExpenses);
         setMaterials(activeProject.materials);
         setProfitMargin(activeProject.profitMargin);
-        setPriceType(activeProject.priceType || 'normal');
         setProjectComments(activeProject.comments);
         
         if (activeProject.stages) {
@@ -630,7 +948,7 @@ function App() {
     setProjectStages(updatedStages);
     
     const updatedProject = {
-      ...projects.find(p => p.id === activeProjectId)!,
+      ...projects.find(project => project.id === activeProjectId)!,
       stages: updatedStages,
       lastModified: new Date().toISOString()
     };
@@ -652,10 +970,14 @@ function App() {
       setSidebarOpen(false);
     }
     
+    // Usar a data atual com milissegundos para garantir que seja a mais recente
+    const currentDate = new Date();
+    const formattedDate = currentDate.toISOString().split('T')[0];
+    
     const newProject: Project = {
       id: '',
       name: '',
-      date: new Date().toISOString().split('T')[0],
+      date: formattedDate,
       clientId: null,
       clientName: '',
       contactPhone: '',
@@ -690,7 +1012,10 @@ function App() {
     try {
       const { data, error } = await createProject(newProject);
       if (error) throw error;
-      setProjects(prev => [...prev, data!]);
+      
+      // Adicionar o novo projeto no início do array para que apareça no topo da lista
+      setProjects(prev => [data!, ...prev]);
+      
       setActiveProjectId(data!.id);
       setShowProjectsKanban(false);
       setShowClientsList(false);
@@ -1087,13 +1412,27 @@ function App() {
 
   const handleSaveWorkshopSettings = async (settings: WorkshopSettings) => {
     try {
+      // Salvar localmente primeiro para garantir que os dados não sejam perdidos
+      const localSettings = {
+        ...settings,
+        lastUpdated: new Date().toISOString()
+      };
+      localStorage.setItem('workshopSettings', JSON.stringify(localSettings));
+      setWorkshopSettings(localSettings);
+      console.log('Configurações da marcenaria salvas localmente');
+      
+      // Tentar salvar no Supabase
       const { data, error } = await saveWorkshopSettings(settings);
-      if (error) throw error;
-      setWorkshopSettings(data!);
-      console.log('Configurações da marcenaria atualizadas:', data);
+      if (error) {
+        console.error('Erro ao salvar configurações da marcenaria no Supabase:', error);
+      } else if (data) {
+        setWorkshopSettings(data);
+        localStorage.setItem('workshopSettings', JSON.stringify(data));
+        console.log('Configurações da marcenaria atualizadas no Supabase');
+      }
     } catch (error) {
-      console.error('Erro ao salvar configurações da marcenaria no Supabase:', error);
-      alert('Erro ao salvar as configurações da marcenaria.');
+      console.error('Erro ao salvar configurações da marcenaria:', error);
+      alert('Erro ao salvar as configurações no servidor. Os dados foram salvos localmente.');
     }
   };
 
@@ -1179,231 +1518,6 @@ function App() {
     }
   };
 
-  const ClientTrackingView = () => {
-    const [project, setProject] = useState<Project | null>(null);
-    const [loading, setLoading] = useState(true);
-    const [error, setError] = useState<string | null>(null);
-
-    useEffect(() => {
-      const loadProject = async () => {
-        try {
-          if (!trackingProjectId) {
-            setError("Link de rastreamento inválido");
-            setLoading(false);
-            return;
-          }
-
-          const { data, error } = await getProject(trackingProjectId);
-          if (error) throw error;
-          if (!data) {
-            setError("Projeto não encontrado");
-            setLoading(false);
-            return;
-          }
-
-          setProject(data);
-          setLoading(false);
-        } catch (error) {
-          console.error('Erro ao carregar projeto do Supabase:', error);
-          setError("Erro ao carregar dados do projeto");
-          setLoading(false);
-        }
-      };
-
-      loadProject();
-    }, [trackingProjectId]);
-
-    if (loading) {
-      return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-100">
-          <div className="bg-white p-8 rounded-lg shadow-md max-w-md w-full">
-            <div className="text-center">
-              <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
-              <h2 className="mt-4 text-lg font-medium text-gray-900">Carregando...</h2>
-              <p className="mt-1 text-sm text-gray-500">
-                Aguarde enquanto carregamos as informações do projeto.
-              </p>
-            </div>
-          </div>
-        </div>
-      );
-    }
-
-    if (error || !project) {
-      return (
-        <div className="min-h-screen flex items-center justify-center bg-gray-100">
-          <div className="bg-white p-8 rounded-lg shadow-md max-w-md w-full">
-            <div className="text-center">
-              <AlertCircle className="mx-auto h-12 w-12 text-red-500" />
-              <h2 className="mt-2 text-lg font-medium text-gray-900">
-                {error || "Projeto não encontrado"}
-              </h2>
-              <p className="mt-1 text-sm text-gray-500">
-                O link que você acessou não corresponde a nenhum projeto ativo.
-              </p>
-            </div>
-          </div>
-        </div>
-      );
-    }
-    
-    const isCanceled = project.stages.projetoCancelado?.completed || false;
-    const cancelDate = project.stages.projetoCancelado?.date 
-      ? new Date(project.stages.projetoCancelado.date).toLocaleDateString('pt-BR') 
-      : '';
-    
-    const isProjectCompleted = project.stages.instalacao?.completed || false;
-    const completionDate = project.stages.instalacao?.date 
-      ? new Date(project.stages.instalacao.date).toLocaleDateString('pt-BR') 
-      : '';
-
-    const formattedEstimatedDate = project.estimatedCompletionDate 
-      ? (() => {
-          const date = new Date(project.estimatedCompletionDate);
-          const localDate = new Date(date.getTime() + date.getTimezoneOffset() * 60000);
-          return localDate.toLocaleDateString('pt-BR', {
-            day: '2-digit',
-            month: '2-digit',
-            year: 'numeric'
-          });
-        })()
-      : null;
-
-    const stagesArray = PROJECT_STAGES.filter(stage => stage.id !== 'projetoCancelado');
-
-    return (
-      <div className="min-h-screen bg-gray-100">
-        <div className="py-6 px-4 sm:px-6 lg:px-8">
-          <div className="max-w-3xl mx-auto">
-            <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6">
-              <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-blue-500 to-indigo-600 text-white">
-                <h1 className="text-2xl font-bold">Acompanhamento de Projeto</h1>
-                <p className="mt-1 text-lg">{project.clientName} - {project.name}</p>
-                <p className="mt-1 text-sm opacity-80">
-                  Iniciado em: {new Date(project.date).toLocaleDateString('pt-BR', { 
-                    day: '2-digit', 
-                    month: '2-digit', 
-                    year: 'numeric',
-                    hour: '2-digit',
-                    minute: '2-digit'
-                  })}
-                </p>
-              </div>
-              
-              {isCanceled && (
-                <div className="p-4 bg-red-50 border-l-4 border-red-500">
-                  <div className="flex items-center">
-                    <XCircle className="h-5 w-5 text-red-500 mr-2" />
-                    <p className="text-sm text-red-700 font-medium">
-                      Este projeto foi cancelado em {cancelDate}
-                    </p>
-                  </div>
-                </div>
-              )}
-              
-              {isProjectCompleted && !isCanceled && (
-                <div className="p-4 bg-green-50 border-l-4 border-green-500">
-                  <div className="flex items-center">
-                    <Check className="h-5 w-5 text-green-500 mr-2" />
-                    <p className="text-sm text-green-700 font-medium">
-                      Projeto finalizado com sucesso em {completionDate}
-                    </p>
-                  </div>
-                  <p className="mt-1 text-sm text-green-600 ml-7">
-                    Agradecemos pela confiança! Esperamos que esteja satisfeito com o resultado.
-                  </p>
-                </div>
-              )}
-            </div>
-            
-            <div className="bg-white rounded-lg shadow-md overflow-hidden">
-              <div className="p-4 border-b border-gray-200">
-                <h2 className="text-lg font-medium text-gray-900">Status do Projeto</h2>
-              </div>
-              
-              <div className="p-4">
-                <div className="flow-root">
-                  <ul className="-mb-8">
-                    {stagesArray
-                      .map((stage) => {
-                        const stageKey = stage.id as keyof ProjectStages;
-                        return {
-                          ...stage,
-                          completed: project.stages[stageKey]?.completed || false,
-                          date: project.stages[stageKey]?.date || null
-                        };
-                      })
-                      .map((stage, index) => (
-                        <li key={stage.id}>
-                          <div className="relative pb-8">
-                            {index !== stagesArray.length - 1 && stage.id !== 'instalacao' && (
-                              <span
-                                className="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200"
-                                aria-hidden="true"
-                              />
-                            )}
-                            <div className="relative flex space-x-3">
-                              <div>
-                                <span className={`h-8 w-8 rounded-full flex items-center justify-center ring-8 ring-white ${
-                                  project.stages && project.stages[stage.id as keyof ProjectStages]?.completed 
-                                    ? 'bg-green-500' 
-                                    : isCanceled 
-                                      ? 'bg-gray-300' 
-                                      : index === stagesArray.findIndex(s => project.stages && !project.stages[s.id as keyof ProjectStages]?.completed) 
-                                        ? 'bg-blue-500 animate-pulse' 
-                                        : 'bg-gray-300'
-                                }`}>
-                                  {project.stages && project.stages[stage.id as keyof ProjectStages]?.completed ? (
-                                    <Check className="h-5 w-5 text-white" />
-                                  ) : (
-                                    <span className="h-2 w-2 rounded-full bg-white" />
-                                  )}
-                                </span>
-                              </div>
-                              <div className="min-w-0 flex-1 pt-1.5 flex justify-between space-x-4">
-                                <div>
-                                  <p className={`text-sm font-medium ${
-                                    project.stages && project.stages[stage.id as keyof ProjectStages]?.completed 
-                                      ? 'text-gray-900' 
-                                      : isCanceled 
-                                        ? 'text-gray-500' 
-                                        : index === stagesArray.findIndex(s => project.stages && !project.stages[s.id as keyof ProjectStages]?.completed) 
-                                          ? 'text-blue-600' 
-                                          : 'text-gray-500'
-                                  }`}>
-                                    {stage.label}
-                                  </p>
-                                </div>
-                                <div className="text-right text-sm whitespace-nowrap text-gray-500">
-                                  {stage.date && (
-                                    <time dateTime={stage.date}>{stage.date}</time>
-                                  )}
-                                </div>
-                              </div>
-                            </div>
-                          </div>
-                        </li>
-                      ))}
-                  </ul>
-                </div>
-              </div>
-            </div>
-            
-            <div className="mt-6 text-center text-sm text-gray-500">
-              <p>Este é um acompanhamento em tempo real do seu projeto.</p>
-              <p className="mt-1">Para mais informações, entre em contato pelo telefone informado.</p>
-              {formattedEstimatedDate && !isProjectCompleted && !isCanceled && (
-                <p className="mt-4 text-center text-sm text-blue-600 font-medium">
-                  Data prevista de entrega: {formattedEstimatedDate}
-                </p>
-              )}
-            </div>
-          </div>
-        </div>
-      </div>
-    );
-  };
-
   useEffect(() => {
     if (user) {
       const handleBeforeUnload = () => {
@@ -1430,19 +1544,38 @@ function App() {
     }
   }, [user, signOut]);
 
+  const [isPublicTracking, setIsPublicTracking] = useState(false);
+  
+  // Verificar o parâmetro de tracking na URL antes de qualquer outra lógica
+  useEffect(() => {
+    const urlParams = new URLSearchParams(window.location.search);
+    const trackingParam = urlParams.get('tracking');
+    
+    if (trackingParam) {
+      console.log('Parâmetro de tracking encontrado:', trackingParam);
+      setIsPublicTracking(true);
+    }
+  }, []);
+  
+  // Se for uma visualização pública, mostrar o componente ClientTrackingView
+  if (isPublicTracking) {
+    return <ClientTrackingView />;
+  }
+
   return (
     <>
-      {loading ? (
+      {showClientTracking ? (
+        <ClientTrackingView />
+      ) : loading ? (
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-gray-800 to-gray-900">
           <div className="text-white text-xl">Carregando...</div>
         </div>
       ) : !user ? (
         <Login />
-      ) : showClientTracking ? (
-        <ClientTrackingView />
       ) : (
-        <div className="flex h-screen bg-gray-100">
-          <div className="relative z-50">
+        <div className="flex flex-col md:flex-row min-h-screen bg-gray-100">
+          {/* Sidebar - Fixa na visualização desktop */}
+          <aside className="md:fixed md:inset-y-0 md:left-0 z-50 md:flex md:flex-col">
             {sidebarOpen && (
               <div 
                 className="md:hidden fixed inset-0 bg-black bg-opacity-50" 
@@ -1451,7 +1584,7 @@ function App() {
             )}
             
             <div 
-              className={`fixed md:relative h-full z-50 transform ${
+              className={`fixed md:static h-screen z-50 transform ${
                 sidebarOpen ? 'translate-x-0' : '-translate-x-full'
               } md:translate-x-0 transition-transform duration-300 ease-in-out`}
             >
@@ -1480,10 +1613,11 @@ function App() {
                 onUserProfileView={handleShowUserProfile}
               />
             </div>
-          </div>
+          </aside>
         
-          <div className="flex-1 flex flex-col overflow-auto">
-            <div className="bg-blue-600 text-white shadow-lg w-full">
+          {/* Conteúdo principal - Rolável, com margem para a barra lateral em desktop */}
+          <div className="flex-1 flex flex-col w-full md:ml-64 overflow-auto">
+            <div className="bg-blue-600 text-white shadow-lg w-full sticky top-0 z-10">
               <div className="container mx-auto px-2 sm:px-4 py-3 sm:py-6">
                 <div className="flex items-center justify-between mb-6">
                   <div className="flex items-center gap-2 sm:gap-3">
