@@ -1,5 +1,5 @@
 import React from 'react';
-import { Plus, Trash2, Users, LayoutDashboard, Building2, BarChart3, LogOut } from 'lucide-react';
+import { Plus, Trash2, Users, LayoutDashboard, Building2, BarChart3, LogOut, User } from 'lucide-react';
 import { Project, WorkshopSettings } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -15,6 +15,7 @@ interface SidebarProps {
   onMyWorkshopView?: () => void; 
   onMyWorkshopSettingsView?: () => void;
   onFinancialSummaryView?: () => void;
+  onUserProfileView?: () => void;
   workshopSettings?: WorkshopSettings;
 }
 
@@ -30,6 +31,7 @@ export function Sidebar({
   onMyWorkshopView,
   onMyWorkshopSettingsView,
   onFinancialSummaryView,
+  onUserProfileView,
   workshopSettings
 }: SidebarProps) {
   const { signOut } = useAuth();
@@ -281,13 +283,25 @@ export function Sidebar({
           <Plus size={20} />
           Novo Projeto
         </button>
-        <button
-          className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors mt-2"
-          onClick={handleLogout}
-        >
-          <LogOut size={20} />
-          Sair
-        </button>
+        
+        {/* Container para os botões Meu Perfil e Sair lado a lado em mobile */}
+        <div className="grid grid-cols-2 md:grid-cols-1 gap-2 mt-2">
+          <button
+            className="flex items-center justify-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors text-sm md:text-base"
+            onClick={onUserProfileView}
+          >
+            <User size={18} />
+            <span>Perfil</span>
+          </button>
+          
+          <button
+            className="flex items-center justify-center gap-2 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors text-sm md:text-base"
+            onClick={handleLogout}
+          >
+            <LogOut size={18} />
+            <span>Sair</span>
+          </button>
+        </div>
       </div>
     </div>
   );

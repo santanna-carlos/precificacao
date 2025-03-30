@@ -64,7 +64,7 @@ export function Login() {
   };
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-gray-800 to-gray-900 p-4">
+    <div className="min-h-screen flex flex-col items-center justify-center bg-gradient-to-b from-gray-800 to-gray-900 p-4 relative">
       <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
         <div className="text-center mb-8">
           <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-blue-400 bg-clip-text text-transparent mb-2">Gestão e Precificação para Marceneiros</h1>
@@ -206,6 +206,9 @@ export function Login() {
             )}
           </>
         )}
+      </div>
+      <div className="absolute bottom-4 left-1/2 transform -translate-x-1/2 text-gray-400 text-sm whitespace-nowrap">
+        Desenvolvido por José Carlos Sant'Anna
       </div>
     </div>
   );

@@ -12,6 +12,7 @@ import { ClientsList } from './components/ClientsList';
 import { ProjectsKanban } from './components/ProjectsKanban';
 import { MyWorkshop } from './components/MyWorkshop';
 import { FinancialSummary } from './components/FinancialSummary';
+import { UserProfile } from './components/UserProfile';
 import { useAuth } from './contexts/AuthContext';
 import { Login } from './components/Login';
 import { getProjects, createProject, updateProject, deleteProject, getProject } from './services/projectService';
@@ -19,7 +20,7 @@ import { getClients, createClient, updateClient, deleteClient } from './services
 import { getWorkshopSettings, saveWorkshopSettings } from './services/workshopService';
 
 function App() {
-  const { user, loading } = useAuth();
+  const { user, loading, signOut } = useAuth();
   
   const [showProjectsKanban, setShowProjectsKanban] = useState(true);
   const [projects, setProjects] = useState<Project[]>([]);
@@ -27,12 +28,60 @@ function App() {
   const [showClientsList, setShowClientsList] = useState(false);
   const [showMyWorkshop, setShowMyWorkshop] = useState(false);
   const [showFinancialSummary, setShowFinancialSummary] = useState(false);
+  const [showUserProfile, setShowUserProfile] = useState(false);
   const [clients, setClients] = useState<Client[]>([]);
+  
+  // Função para salvar o estado de navegação no sessionStorage
+  const saveNavigationState = () => {
+    if (user) {
+      const navigationState = {
+        showProjectsKanban,
+        showClientsList,
+        showMyWorkshop,
+        showFinancialSummary,
+        showUserProfile,
+        activeProjectId
+      };
+      sessionStorage.setItem('navigationState', JSON.stringify(navigationState));
+    }
+  };
+  
+  // Efeito para salvar o estado de navegação sempre que ele mudar
+  useEffect(() => {
+    if (user) {
+      saveNavigationState();
+    }
+  }, [showProjectsKanban, showClientsList, showMyWorkshop, showFinancialSummary, showUserProfile, activeProjectId, user]);
+  
+  // Efeito para restaurar o estado de navegação ao carregar a página
+  useEffect(() => {
+    if (user && !loading) {
+      const storedNavigationState = sessionStorage.getItem('navigationState');
+      if (storedNavigationState) {
+        try {
+          const navigationState = JSON.parse(storedNavigationState);
+          setShowProjectsKanban(navigationState.showProjectsKanban);
+          setShowClientsList(navigationState.showClientsList);
+          setShowMyWorkshop(navigationState.showMyWorkshop);
+          setShowFinancialSummary(navigationState.showFinancialSummary);
+          setShowUserProfile(navigationState.showUserProfile);
+          if (navigationState.activeProjectId) {
+            setActiveProjectId(navigationState.activeProjectId);
+          }
+        } catch (error) {
+          console.error('Erro ao restaurar estado de navegação:', error);
+          sessionStorage.removeItem('navigationState');
+        }
+      }
+    }
+  }, [user, loading]);
+  
   const handleShowProjectsKanban = () => {
     setActiveProjectId(null);
     setShowClientsList(false);
     setShowMyWorkshop(false);
     setShowFinancialSummary(false);
+    setShowUserProfile(false);
     setShowProjectsKanban(true);
     
     if (window.innerWidth < 768) {
@@ -46,6 +95,7 @@ function App() {
     setShowProjectsKanban(false);
     setShowMyWorkshop(true);
     setShowFinancialSummary(false);
+    setShowUserProfile(false);
     
     if (window.innerWidth < 768) {
       setSidebarOpen(false);
@@ -58,6 +108,20 @@ function App() {
     setShowProjectsKanban(false);
     setShowMyWorkshop(false);
     setShowFinancialSummary(true);
+    setShowUserProfile(false);
+    
+    if (window.innerWidth < 768) {
+      setSidebarOpen(false);
+    }
+  };
+  
+  const handleShowUserProfile = () => {
+    setActiveProjectId(null);
+    setShowClientsList(false);
+    setShowProjectsKanban(false);
+    setShowMyWorkshop(false);
+    setShowFinancialSummary(false);
+    setShowUserProfile(true);
     
     if (window.innerWidth < 768) {
       setSidebarOpen(false);
@@ -125,16 +189,23 @@ function App() {
       if (!user) return;
 
       try {
+        // Verificar se existe um estado de navegação salvo
+        const storedNavigationState = sessionStorage.getItem('navigationState');
+        const hasStoredState = !!storedNavigationState;
+        
+        // Carregar projetos
         const { data: projectsData, error: projectsError } = await getProjects();
-        if (projectsError) throw new Error(`Erro ao carregar projetos: ${projectsError.message}`);
+        if (projectsError) throw projectsError;
         setProjects(projectsData || []);
-
+        
+        // Carregar clientes
         const { data: clientsData, error: clientsError } = await getClients();
-        if (clientsError) throw new Error(`Erro ao carregar clientes: ${clientsError.message}`);
+        if (clientsError) throw clientsError;
         setClients(clientsData || []);
-
+        
+        // Carregar configurações da marcenaria
         const { data: workshopData, error: workshopError } = await getWorkshopSettings();
-        if (workshopError) throw new Error(`Erro ao carregar configurações da marcenaria: ${workshopError.message}`);
+        if (workshopError) throw workshopError;
         setWorkshopSettings(workshopData || {
           id: '',
           workingDaysPerMonth: 22,
@@ -143,22 +214,32 @@ function App() {
           expenses: [],
           lastUpdated: new Date().toISOString(),
         });
-
+        
+        // Verificar se há um parâmetro de tracking na URL
         const urlParams = new URLSearchParams(window.location.search);
         const trackingParam = urlParams.get('tracking');
         
-        if (trackingParam) {
-          const projectExists = (projectsData || []).some((p: Project) => p.id === trackingParam);
-          
-          if (projectExists) {
-            setTrackingProjectId(trackingParam);
-            setShowClientTracking(true);
+        // Só definir o estado de navegação se não houver um estado salvo
+        if (!hasStoredState) {
+          if (trackingParam) {
+            const projectExists = projectsData?.some(project => project.id === trackingParam);
             
-            setShowProjectsKanban(false);
-            setShowClientsList(false);
-            setShowMyWorkshop(false);
-            setShowFinancialSummary(false);
-            setActiveProjectId(null);
+            if (projectExists) {
+              setTrackingProjectId(trackingParam);
+              setShowClientTracking(true);
+              
+              setShowProjectsKanban(false);
+              setShowClientsList(false);
+              setShowMyWorkshop(false);
+              setShowFinancialSummary(false);
+              setActiveProjectId(null);
+            } else {
+              setShowProjectsKanban(true);
+              setShowClientsList(false);
+              setShowMyWorkshop(false);
+              setShowFinancialSummary(false);
+              setActiveProjectId(null);
+            }
           } else {
             setShowProjectsKanban(true);
             setShowClientsList(false);
@@ -166,19 +247,7 @@ function App() {
             setShowFinancialSummary(false);
             setActiveProjectId(null);
           }
-        } else {
-          setShowProjectsKanban(true);
-          setShowClientsList(false);
-          setShowMyWorkshop(false);
-          setShowFinancialSummary(false);
-          setActiveProjectId(null);
         }
-        
-        // Remover esta condição que pode estar definindo um activeProjectId
-        // mesmo quando showProjectsKanban é true
-        // if (projectsData && projectsData.length > 0 && !showProjectsKanban) {
-        //   setActiveProjectId(projectsData[0].id);
-        // }
       } catch (error) {
         console.error('Erro ao carregar dados iniciais:', error);
         setProjects([]);
@@ -204,6 +273,7 @@ function App() {
       setShowClientsList(false);
       setShowMyWorkshop(false);
       setShowFinancialSummary(false);
+      setShowUserProfile(false);
       setActiveProjectId(null);
       setProjects([]);
       setClients([]);
@@ -626,6 +696,7 @@ function App() {
       setShowClientsList(false);
       setShowMyWorkshop(false);
       setShowFinancialSummary(false);
+      setShowUserProfile(false);
 
       setProjectName('');
       setClientName('');
@@ -664,6 +735,7 @@ function App() {
     setShowClientsList(false);
     setShowMyWorkshop(false);
     setShowFinancialSummary(false);
+    setShowUserProfile(false);
   };
 
   const handleDeleteProject = async (projectId: string) => {
@@ -689,6 +761,7 @@ function App() {
             setShowClientsList(false);
             setShowMyWorkshop(false);
             setShowFinancialSummary(false);
+            setShowUserProfile(false);
           }
         }
       } catch (error) {
@@ -927,6 +1000,7 @@ function App() {
     setShowProjectsKanban(false);
     setShowMyWorkshop(false);
     setShowFinancialSummary(false);
+    setShowUserProfile(false);
     
     if (window.innerWidth < 768) {
       setSidebarOpen(false);
@@ -1330,6 +1404,32 @@ function App() {
     );
   };
 
+  useEffect(() => {
+    if (user) {
+      const handleBeforeUnload = () => {
+        // Usar localStorage para verificar se o usuário fechou a aba/navegador
+        localStorage.setItem('app_closing', 'true');
+        
+        // Não é necessário chamar signOut aqui, pois o navegador está fechando
+        // e o sessionStorage será limpo automaticamente
+      };
+
+      window.addEventListener('beforeunload', handleBeforeUnload);
+      
+      // Verificar se o navegador foi fechado anteriormente
+      const wasClosing = localStorage.getItem('app_closing') === 'true';
+      if (wasClosing) {
+        // Se o navegador foi fechado, fazer logout
+        signOut();
+        localStorage.removeItem('app_closing');
+      }
+      
+      return () => {
+        window.removeEventListener('beforeunload', handleBeforeUnload);
+      };
+    }
+  }, [user, signOut]);
+
   return (
     <>
       {loading ? (
@@ -1365,6 +1465,7 @@ function App() {
                   setShowProjectsKanban(false);
                   setShowMyWorkshop(false);
                   setShowFinancialSummary(false);
+                  setShowUserProfile(false);
                   if (window.innerWidth < 768) {
                     setSidebarOpen(false);
                   }
@@ -1376,6 +1477,7 @@ function App() {
                 onProjectsKanbanView={handleShowProjectsKanban}
                 onMyWorkshopView={handleShowMyWorkshop}
                 onFinancialSummaryView={handleShowFinancialSummary}
+                onUserProfileView={handleShowUserProfile}
               />
             </div>
           </div>
@@ -1512,10 +1614,25 @@ function App() {
                     setShowProjectsKanban(false);
                     setShowMyWorkshop(false);
                     setShowFinancialSummary(false);
+                    setShowUserProfile(false);
                   }}
                 />
               ) : showFinancialSummary ? (
-                <FinancialSummary projects={projects} />
+                <FinancialSummary 
+                  projects={projects} 
+                  workshopSettings={workshopSettings}
+                  onBack={() => {
+                    setActiveProjectId(null);
+                    setShowClientsList(false);
+                    setShowProjectsKanban(true);
+                    setShowMyWorkshop(false);
+                    setShowFinancialSummary(false);
+                    setShowUserProfile(false);
+                  }} 
+                  onDeleteProject={handleDeleteProject}
+                />
+              ) : showUserProfile ? (
+                <UserProfile />
               ) : showProjectsKanban ? (
                 <ProjectsKanban 
                   projects={projects} 
@@ -1525,6 +1642,7 @@ function App() {
                     setShowProjectsKanban(false);
                     setShowMyWorkshop(false);
                     setShowFinancialSummary(false);
+                    setShowUserProfile(false);
                   }} 
                   onDeleteProject={handleDeleteProject}
                 />
