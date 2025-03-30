@@ -61,7 +61,6 @@ export interface Project {
   useWorkshopForFixedExpenses?: boolean; // Indica se usa cálculo automático ou manual
   frozenDailyCost?: number; // Valor congelado do custo diário quando o projeto técnico for aprovado
   priceType?: 'normal' | 'markup'; // Tipo de preço selecionado (normal ou com markup)
-  markupPercentage?: number; // Percentual de markup aplicado ao preço de venda
   estimatedCompletionDate?: string; // Data prevista para finalização do projeto
 }
 
@@ -82,6 +81,7 @@ export interface WorkshopExpense {
   description: string;
   quantity: number;
   unitValue: number;
+  isCustomDescription?: boolean;
   note?: string;
 }
 

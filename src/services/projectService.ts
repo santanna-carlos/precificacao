@@ -1,31 +1,30 @@
 import { supabase } from '../supabase';
-import { Project, ExpenseItem, ProjectStages } from '../types';
+import { Project, ExpenseItem } from '../types';
 
 // Função para converter o formato do projeto do frontend para o banco de dados
-const projectToDbFormat = (project: Project, userId: string) => {
+const projectToDbFormat = (project: Project) => {
   return {
-    id: project.id,
     name: project.name,
     date: project.date,
     client_id: project.clientId,
     client_name: project.clientName,
     contact_phone: project.contactPhone,
-    profit_margin: project.profitMargin,
-    total_cost: project.totalCost,
-    sale_price: project.salePrice,
+    profitMargin: project.profitMargin,
+    totalCost: project.totalCost,
+    salePrice: project.salePrice,
     comments: project.comments,
-    fixed_expense_days: project.fixedExpenseDays,
-    use_workshop_for_fixed_expenses: project.useWorkshopForFixedExpenses,
-    frozen_daily_cost: project.frozenDailyCost,
+    stages: project.stages, // Armazenado como JSONB
+    fixedExpenseDays: project.fixedExpenseDays,
+    useWorkshopForFixedExpenses: project.useWorkshopForFixedExpenses,
+    frozenDailyCost: project.frozenDailyCost,
     price_type: project.priceType,
-    markup_percentage: project.markupPercentage,
-    estimated_completion_date: project.estimatedCompletionDate,
-    user_id: userId
+    lastModified: project.lastModified,
+    estimated_completion_date: project.estimatedCompletionDate
   };
 };
 
 // Função para converter o formato do projeto do banco de dados para o frontend
-const dbToProjectFormat = (dbProject: any, expenses: ExpenseItem[], stages: ProjectStages): Project => {
+const dbToProjectFormat = (dbProject: any, expenses: ExpenseItem[]): Project => {
   return {
     id: dbProject.id,
     name: dbProject.name,
@@ -36,54 +35,11 @@ const dbToProjectFormat = (dbProject: any, expenses: ExpenseItem[], stages: Proj
     fixedExpenses: expenses.filter(e => e.type === 'fixed'),
     variableExpenses: expenses.filter(e => e.type === 'variable'),
     materials: expenses.filter(e => e.type === 'material'),
-    profitMargin: dbProject.profit_margin,
-    totalCost: dbProject.total_cost,
-    salePrice: dbProject.sale_price,
+    profitMargin: dbProject.profitMargin,
+    totalCost: dbProject.totalCost,
+    salePrice: dbProject.salePrice,
     comments: dbProject.comments,
-    stages: stages,
-    lastModified: dbProject.last_modified,
-    fixedExpenseDays: dbProject.fixed_expense_days,
-    useWorkshopForFixedExpenses: dbProject.use_workshop_for_fixed_expenses,
-    frozenDailyCost: dbProject.frozen_daily_cost,
-    priceType: dbProject.price_type || 'normal',
-    markupPercentage: dbProject.markup_percentage || 10,
-    estimatedCompletionDate: dbProject.estimated_completion_date
-  };
-};
-
-// Função para salvar as etapas do projeto
-const saveProjectStages = async (projectId: string, stages: ProjectStages) => {
-  // Primeiro, excluir as etapas existentes
-  await supabase
-    .from('project_stages')
-    .delete()
-    .eq('project_id', projectId);
-  
-  // Depois, inserir as novas etapas
-  const stageEntries = Object.entries(stages).map(([stageName, stageData]) => ({
-    project_id: projectId,
-    stage_name: stageName,
-    completed: stageData.completed,
-    date: stageData.date,
-    cancellation_reason: stageData.cancellationReason,
-    real_cost: stageData.realCost,
-    has_completion_notes: stageData.hasCompletionNotes,
-    completion_notes: stageData.completionNotes
-  }));
-  
-  return await supabase.from('project_stages').insert(stageEntries);
-};
-
-// Função para obter as etapas do projeto
-const getProjectStages = async (projectId: string): Promise<ProjectStages> => {
-  const { data, error } = await supabase
-    .from('project_stages')
-    .select('*')
-    .eq('project_id', projectId);
-  
-  if (error) {
-    console.error('Erro ao obter etapas do projeto:', error);
-    return {
+    stages: dbProject.stages || {
       orcamento: { completed: false, date: null },
       projetoTecnico: { completed: false, date: null },
       corte: { completed: false, date: null },
@@ -93,122 +49,109 @@ const getProjectStages = async (projectId: string): Promise<ProjectStages> => {
       acabamento: { completed: false, date: null },
       entrega: { completed: false, date: null },
       instalacao: { completed: false, date: null },
-      projetoCancelado: { completed: false, date: null }
+      projetoCancelado: { completed: false, date: null },
+    },
+    lastModified: dbProject.lastModified,
+    fixedExpenseDays: dbProject.fixedExpenseDays,
+    useWorkshopForFixedExpenses: dbProject.useWorkshopForFixedExpenses,
+    frozenDailyCost: dbProject.frozenDailyCost,
+    priceType: dbProject.price_type || 'normal',
+    estimatedCompletionDate: dbProject.estimated_completion_date || null,
     };
-  }
-  
-  // Converter os dados do banco para o formato esperado pelo frontend
-  const stages: ProjectStages = {
-    orcamento: { completed: false, date: null },
-    projetoTecnico: { completed: false, date: null },
-    corte: { completed: false, date: null },
-    fitamento: { completed: false, date: null },
-    furacaoUsinagem: { completed: false, date: null },
-    preMontagem: { completed: false, date: null },
-    acabamento: { completed: false, date: null },
-    entrega: { completed: false, date: null },
-    instalacao: { completed: false, date: null },
-    projetoCancelado: { completed: false, date: null }
-  };
-  
-  data.forEach((stage: any) => {
-    const stageName = stage.stage_name as keyof ProjectStages;
-    if (stageName in stages) {
-      stages[stageName] = {
-        completed: stage.completed,
-        date: stage.date,
-        cancellationReason: stage.cancellation_reason,
-        realCost: stage.real_cost,
-        hasCompletionNotes: stage.has_completion_notes,
-        completionNotes: stage.completion_notes
-      };
-    }
-  });
-  
-  return stages;
 };
 
 // Função para salvar as despesas do projeto
-const saveProjectExpenses = async (projectId: string, expenses: ExpenseItem[], expenseType: string) => {
-  // Primeiro, excluir as despesas existentes deste tipo
-  await supabase
-    .from('expenses')
-    .delete()
-    .eq('project_id', projectId)
-    .eq('expense_type', expenseType);
-  
-  // Depois, inserir as novas despesas
-  const expenseEntries = expenses.map(expense => ({
-    project_id: projectId,
-    expense_type: expenseType,
-    item_type: expense.type,
-    quantity: expense.quantity,
-    unit_value: expense.unitValue,
-    total: expense.total,
-    custom_type: expense.customType
-  }));
-  
-  if (expenseEntries.length > 0) {
-    return await supabase.from('expenses').insert(expenseEntries);
+const saveProjectExpenses = async (projectId: string, expenses: ExpenseItem[], expenseType: 'fixed' | 'variable' | 'material') => {
+  try {
+    // Primeiro, excluir as despesas existentes deste tipo
+    await supabase
+      .from('project_expenses')
+      .delete()
+      .eq('project_id', projectId)
+      .eq('type', expenseType);
+
+    // Inserir as despesas uma por uma
+    for (const expense of expenses) {
+      const expenseEntry = {
+        project_id: projectId,
+        type: expenseType,
+        quantity: expense.quantity,
+        unitValue: expense.unitValue,
+        customType: expense.customType,
+      };
+      
+      const { error } = await supabase
+        .from('project_expenses')
+        .insert(expenseEntry);
+        
+      if (error) {
+        console.error('Erro ao salvar despesa do projeto:', error);
+        // Continua tentando inserir as outras despesas mesmo se uma falhar
+      }
+    }
+
+    return { data: null, error: null };
+  } catch (error) {
+    console.error('Erro ao salvar despesas do projeto:', error);
+    return { data: null, error };
   }
-  
-  return { data: null, error: null };
 };
 
 // Função para obter as despesas do projeto
 const getProjectExpenses = async (projectId: string): Promise<ExpenseItem[]> => {
   const { data, error } = await supabase
-    .from('expenses')
+    .from('project_expenses')
     .select('*')
     .eq('project_id', projectId);
-  
+
   if (error) {
     console.error('Erro ao obter despesas do projeto:', error);
     return [];
   }
-  
+
+  // Log para debug
+  console.log('Dados recebidos do banco:', data);
+
   // Converter os dados do banco para o formato esperado pelo frontend
-  return data.map((expense: any) => ({
-    id: expense.id,
-    type: expense.item_type,
-    quantity: expense.quantity,
-    unitValue: expense.unit_value,
-    total: expense.total,
-    customType: expense.custom_type
-  }));
+  return data.map((expense: any) => {
+    // Log para debug de cada item
+    console.log('Processando despesa:', expense);
+    
+    return {
+      id: expense.id,
+      type: expense.type,
+      quantity: expense.quantity,
+      unitValue: expense.unitValue,
+      total: expense.total,
+      customType: expense.customType,
+    };
+  });
 };
 
 // Função para criar um novo projeto
 export const createProject = async (project: Project): Promise<{ data: Project | null, error: any }> => {
   try {
-    // Obter o usuário atual
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) {
-      return { data: null, error: 'Usuário não autenticado' };
-    }
-    
-    // Inserir o projeto no banco
+    // Inserir o projeto no banco (user_id é definido automaticamente pelo trigger)
     const { data, error } = await supabase
       .from('projects')
-      .insert(projectToDbFormat(project, user.id))
+      .insert(projectToDbFormat(project))
       .select()
       .single();
-    
+
     if (error) {
       console.error('Erro ao criar projeto:', error);
       return { data: null, error };
     }
-    
-    // Salvar as etapas do projeto
-    await saveProjectStages(data.id, project.stages);
-    
+
     // Salvar as despesas do projeto
     await saveProjectExpenses(data.id, project.fixedExpenses, 'fixed');
     await saveProjectExpenses(data.id, project.variableExpenses, 'variable');
     await saveProjectExpenses(data.id, project.materials, 'material');
-    
-    return { data: project, error: null };
+
+    // Obter as despesas para montar o objeto Project
+    const expenses = await getProjectExpenses(data.id);
+
+    return { data: dbToProjectFormat(data, expenses), error: null };
   } catch (error) {
     console.error('Erro inesperado ao criar projeto:', error);
     return { data: null, error };
@@ -218,38 +161,31 @@ export const createProject = async (project: Project): Promise<{ data: Project |
 // Função para atualizar um projeto existente
 export const updateProject = async (project: Project): Promise<{ data: Project | null, error: any }> => {
   try {
-    // Obter o usuário atual
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) {
-      return { data: null, error: 'Usuário não autenticado' };
-    }
-    
     // Atualizar o projeto no banco
     const { data, error } = await supabase
       .from('projects')
       .update({
-        ...projectToDbFormat(project, user.id),
-        last_modified: new Date().toISOString()
+        ...projectToDbFormat(project),
+        lastModified: new Date().toISOString(),
       })
       .eq('id', project.id)
       .select()
       .single();
-    
+
     if (error) {
       console.error('Erro ao atualizar projeto:', error);
       return { data: null, error };
     }
-    
-    // Atualizar as etapas do projeto
-    await saveProjectStages(project.id, project.stages);
-    
+
     // Atualizar as despesas do projeto
     await saveProjectExpenses(project.id, project.fixedExpenses, 'fixed');
     await saveProjectExpenses(project.id, project.variableExpenses, 'variable');
     await saveProjectExpenses(project.id, project.materials, 'material');
-    
-    return { data: project, error: null };
+
+    // Obter as despesas para montar o objeto Project
+    const expenses = await getProjectExpenses(project.id);
+
+    return { data: dbToProjectFormat(data, expenses), error: null };
   } catch (error) {
     console.error('Erro inesperado ao atualizar projeto:', error);
     return { data: null, error };
@@ -259,35 +195,25 @@ export const updateProject = async (project: Project): Promise<{ data: Project |
 // Função para obter todos os projetos do usuário
 export const getProjects = async (): Promise<{ data: Project[] | null, error: any }> => {
   try {
-    // Obter o usuário atual
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) {
-      return { data: null, error: 'Usuário não autenticado' };
-    }
-    
-    // Obter os projetos do usuário
+    // Obter os projetos do usuário (RLS já filtra por user_id)
     const { data, error } = await supabase
       .from('projects')
       .select('*')
-      .eq('user_id', user.id)
-      .order('last_modified', { ascending: false });
-    
+      .order('lastModified', { ascending: false });
+
     if (error) {
       console.error('Erro ao obter projetos:', error);
       return { data: null, error };
     }
-    
-    // Para cada projeto, obter suas etapas e despesas
+
+    // Para cada projeto, obter suas despesas
     const projects: Project[] = [];
-    
+
     for (const dbProject of data) {
-      const stages = await getProjectStages(dbProject.id);
       const expenses = await getProjectExpenses(dbProject.id);
-      
-      projects.push(dbToProjectFormat(dbProject, expenses, stages));
+      projects.push(dbToProjectFormat(dbProject, expenses));
     }
-    
+
     return { data: projects, error: null };
   } catch (error) {
     console.error('Erro inesperado ao obter projetos:', error);
@@ -298,32 +224,23 @@ export const getProjects = async (): Promise<{ data: Project[] | null, error: an
 // Função para obter um projeto específico
 export const getProject = async (projectId: string): Promise<{ data: Project | null, error: any }> => {
   try {
-    // Obter o usuário atual
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) {
-      return { data: null, error: 'Usuário não autenticado' };
-    }
-    
-    // Obter o projeto
+    // Obter o projeto (RLS já filtra por user_id)
     const { data, error } = await supabase
       .from('projects')
       .select('*')
       .eq('id', projectId)
-      .eq('user_id', user.id)
       .single();
-    
+
     if (error) {
       console.error('Erro ao obter projeto:', error);
       return { data: null, error };
     }
-    
-    // Obter as etapas e despesas do projeto
-    const stages = await getProjectStages(data.id);
+
+    // Obter as despesas do projeto
     const expenses = await getProjectExpenses(data.id);
-    
+
     return { 
-      data: dbToProjectFormat(data, expenses, stages), 
+      data: dbToProjectFormat(data, expenses), 
       error: null 
     };
   } catch (error) {
@@ -335,25 +252,17 @@ export const getProject = async (projectId: string): Promise<{ data: Project | n
 // Função para excluir um projeto
 export const deleteProject = async (projectId: string): Promise<{ success: boolean, error: any }> => {
   try {
-    // Obter o usuário atual
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) {
-      return { success: false, error: 'Usuário não autenticado' };
-    }
-    
-    // Excluir o projeto
+    // Excluir o projeto (RLS já filtra por user_id)
     const { error } = await supabase
       .from('projects')
       .delete()
-      .eq('id', projectId)
-      .eq('user_id', user.id);
-    
+      .eq('id', projectId);
+
     if (error) {
       console.error('Erro ao excluir projeto:', error);
       return { success: false, error };
     }
-    
+
     return { success: true, error: null };
   } catch (error) {
     console.error('Erro inesperado ao excluir projeto:', error);

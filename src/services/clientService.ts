@@ -2,15 +2,14 @@ import { supabase } from '../supabase';
 import { Client } from '../types';
 
 // Função para converter o formato do cliente do frontend para o banco de dados
-const clientToDbFormat = (client: Client, userId: string) => {
+const clientToDbFormat = (client: Client) => {
   return {
-    id: client.id,
+    id: client.id, // Não necessário para INSERT, mas mantido para UPDATE
     name: client.name,
     phone: client.phone,
     email: client.email,
     address: client.address,
     notes: client.notes,
-    user_id: userId
   };
 };
 
@@ -24,38 +23,25 @@ const dbToClientFormat = (dbClient: any): Client => {
     address: dbClient.address,
     notes: dbClient.notes,
     createdAt: dbClient.created_at,
-    lastModified: dbClient.last_modified
+    lastModified: dbClient.last_modified,
   };
 };
 
 // Função para criar um novo cliente
-export const createClient = async (client: Omit<Client, 'id' | 'createdAt'>): Promise<{ data: Client | null, error: any }> => {
+export const createClient = async (client: Omit<Client, 'id' | 'createdAt' | 'lastModified'>): Promise<{ data: Client | null, error: any }> => {
   try {
-    // Obter o usuário atual
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) {
-      return { data: null, error: 'Usuário não autenticado' };
-    }
-    
-    const newClient = {
-      ...client,
-      id: crypto.randomUUID(),
-      createdAt: new Date().toISOString()
-    };
-    
-    // Inserir o cliente no banco
+    // Inserir o cliente no banco (id e user_id são definidos automaticamente pelo banco)
     const { data, error } = await supabase
       .from('clients')
-      .insert(clientToDbFormat(newClient, user.id))
+      .insert(clientToDbFormat(client as Client))
       .select()
       .single();
-    
+
     if (error) {
       console.error('Erro ao criar cliente:', error);
       return { data: null, error };
     }
-    
+
     return { data: dbToClientFormat(data), error: null };
   } catch (error) {
     console.error('Erro inesperado ao criar cliente:', error);
@@ -66,30 +52,22 @@ export const createClient = async (client: Omit<Client, 'id' | 'createdAt'>): Pr
 // Função para atualizar um cliente existente
 export const updateClient = async (client: Client): Promise<{ data: Client | null, error: any }> => {
   try {
-    // Obter o usuário atual
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) {
-      return { data: null, error: 'Usuário não autenticado' };
-    }
-    
     // Atualizar o cliente no banco
     const { data, error } = await supabase
       .from('clients')
       .update({
-        ...clientToDbFormat(client, user.id),
-        last_modified: new Date().toISOString()
+        ...clientToDbFormat(client),
+        last_modified: new Date().toISOString(),
       })
       .eq('id', client.id)
-      .eq('user_id', user.id)
       .select()
       .single();
-    
+
     if (error) {
       console.error('Erro ao atualizar cliente:', error);
       return { data: null, error };
     }
-    
+
     return { data: dbToClientFormat(data), error: null };
   } catch (error) {
     console.error('Erro inesperado ao atualizar cliente:', error);
@@ -100,25 +78,17 @@ export const updateClient = async (client: Client): Promise<{ data: Client | nul
 // Função para obter todos os clientes do usuário
 export const getClients = async (): Promise<{ data: Client[] | null, error: any }> => {
   try {
-    // Obter o usuário atual
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) {
-      return { data: null, error: 'Usuário não autenticado' };
-    }
-    
-    // Obter os clientes do usuário
+    // Obter os clientes do usuário (RLS já filtra por user_id)
     const { data, error } = await supabase
       .from('clients')
       .select('*')
-      .eq('user_id', user.id)
       .order('name');
-    
+
     if (error) {
       console.error('Erro ao obter clientes:', error);
       return { data: null, error };
     }
-    
+
     return { data: data.map(dbToClientFormat), error: null };
   } catch (error) {
     console.error('Erro inesperado ao obter clientes:', error);
@@ -129,25 +99,17 @@ export const getClients = async (): Promise<{ data: Client[] | null, error: any 
 // Função para excluir um cliente
 export const deleteClient = async (clientId: string): Promise<{ success: boolean, error: any }> => {
   try {
-    // Obter o usuário atual
-    const { data: { user } } = await supabase.auth.getUser();
-    
-    if (!user) {
-      return { success: false, error: 'Usuário não autenticado' };
-    }
-    
-    // Excluir o cliente
+    // Excluir o cliente (RLS já filtra por user_id)
     const { error } = await supabase
       .from('clients')
       .delete()
-      .eq('id', clientId)
-      .eq('user_id', user.id);
-    
+      .eq('id', clientId);
+
     if (error) {
       console.error('Erro ao excluir cliente:', error);
       return { success: false, error };
     }
-    
+
     return { success: true, error: null };
   } catch (error) {
     console.error('Erro inesperado ao excluir cliente:', error);

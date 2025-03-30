@@ -148,19 +148,20 @@ export function ClientsList({ clients, projects = [], onAddClient, onUpdateClien
     
     // Depois, adicionar clientes derivados de projetos apenas se não existirem no mapa
     derivedClients.forEach(derivedClient => {
-      // Para clientes derivados, verificar se já existe um cliente com o mesmo nome
-      const existingClientWithSameName = Array.from(uniqueClientsMap.values()).find(
-        c => c.name.toLowerCase() === derivedClient.name.toLowerCase()
+      // Para clientes derivados, verificar se já existe um cliente com o mesmo nome E telefone
+      const existingClientWithSameNameAndPhone = Array.from(uniqueClientsMap.values()).find(
+        c => c.name.toLowerCase() === derivedClient.name.toLowerCase() && 
+             c.phone === derivedClient.phone
       );
       
-      if (!existingClientWithSameName) {
-        // Se não existir cliente com o mesmo nome, adicionar ao mapa
-        // Usar um ID temporário para clientes derivados
-        uniqueClientsMap.set(`derived-${derivedClient.name}`, derivedClient);
+      if (!existingClientWithSameNameAndPhone) {
+        // Se não existir cliente com o mesmo nome e telefone, adicionar ao mapa
+        // Usar um ID temporário para clientes derivados que inclui nome e telefone
+        uniqueClientsMap.set(`derived-${derivedClient.name}-${derivedClient.phone}`, derivedClient);
       } else {
-        // Se existir um cliente com o mesmo nome, atualizar a contagem de projetos
+        // Se existir um cliente com o mesmo nome e telefone, atualizar a contagem de projetos
         // e informações do último projeto, se necessário
-        const existingClient = existingClientWithSameName;
+        const existingClient = existingClientWithSameNameAndPhone;
         
         // Atualizar contagem de projetos
         existingClient.projectsCount = Math.max(
@@ -331,15 +332,25 @@ export function ClientsList({ clients, projects = [], onAddClient, onUpdateClien
     
     // Para clientes registrados (com ID)
     if ('id' in selectedClient && selectedClient.id) {
-      return projects.filter(project => project.clientId === selectedClient.id);
+      // Buscar projetos tanto pelo ID quanto pelo nome E telefone do cliente
+      return projects.filter(project => 
+        // Projetos associados diretamente pelo ID
+        project.clientId === selectedClient.id ||
+        // Projetos associados pelo nome E telefone (sem clientId)
+        (!project.clientId && 
+         project.clientName && 
+         project.clientName.toLowerCase() === selectedClient.name.toLowerCase() &&
+         project.contactPhone === selectedClient.phone)
+      );
     }
     
-    // Para clientes derivados (sem ID, apenas nome)
+    // Para clientes derivados (sem ID, apenas nome e telefone)
     return projects.filter(
       project => 
         !project.clientId && 
         project.clientName && 
-        project.clientName.toLowerCase() === selectedClient.name.toLowerCase()
+        project.clientName.toLowerCase() === selectedClient.name.toLowerCase() &&
+        project.contactPhone === selectedClient.phone
     );
   }, [selectedClient, projects]);
 
@@ -717,7 +728,33 @@ export function ClientsList({ clients, projects = [], onAddClient, onUpdateClien
                               {new Intl.NumberFormat('pt-BR', { 
                                 style: 'currency', 
                                 currency: 'BRL' 
-                              }).format(project.salePrice)}
+                              }).format(
+                                project.priceType === 'markup' 
+                                  ? (() => {
+                                      // Calcular o custo de materiais
+                                      const materialsTotal = project.materials
+                                        ? project.materials.reduce((sum, material) => {
+                                            const quantity = typeof material.quantity === 'string' 
+                                              ? (material.quantity === '' ? 0 : parseFloat(material.quantity)) 
+                                              : (material.quantity || 0);
+                                            const unitValue = typeof material.unitValue === 'string'
+                                              ? (material.unitValue === '' ? 0 : parseFloat(material.unitValue))
+                                              : (material.unitValue || 0);
+                                            return sum + (quantity * unitValue);
+                                          }, 0)
+                                        : 0;
+                                      
+                                      // Calcular o markup como a razão entre o preço de venda e o custo de materiais
+                                      const markup = materialsTotal > 0 ? project.salePrice / materialsTotal : 1;
+                                      
+                                      // Calcular o preço com markup como o custo total multiplicado pelo markup
+                                      return project.totalCost * markup;
+                                    })()
+                                  : project.salePrice
+                              )}
+                              {project.priceType === 'markup' && (
+                                <span className="ml-1 text-xs text-green-600 font-medium">(Markup)</span>
+                              )}
                             </div>
                           )}
                         </div>

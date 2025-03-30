@@ -198,8 +198,21 @@ export function ExpenseSection({
                     <tr key={item.id} className="border-b">
                       <td className="px-2 sm:px-4 py-2">
                         <select
-                          value={item.type}
-                          onChange={(e) => !disabled && onChange(item.id, 'type', e.target.value)}
+                          value={item.customType && EXPENSE_OPTIONS[type].includes(item.customType) ? item.customType : item.type}
+                          onChange={(e) => {
+                            if (disabled) return;
+                            
+                            const selectedType = e.target.value;
+                            onChange(item.id, 'type', selectedType);
+                            
+                            // Se não for "Outros", usar o valor selecionado como customType
+                            if (selectedType !== 'Outros') {
+                              onChange(item.id, 'customType', selectedType);
+                            } else {
+                              // Se for "Outros", limpar o customType para que o usuário preencha
+                              onChange(item.id, 'customType', '');
+                            }
+                          }}
                           disabled={disabled}
                           className={`w-full p-1 sm:p-2 text-xs sm:text-sm border border-gray-300 rounded-md ${disabled ? 'bg-gray-100' : ''}`}
                         >

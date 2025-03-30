@@ -48,15 +48,23 @@ interface MyWorkshopProps {
 
 export const MyWorkshop: React.FC<MyWorkshopProps> = ({ workshopSettings, onSaveSettings }) => {
   // Estado local para as configurações
-  const [settings, setSettings] = useState<WorkshopSettings>(workshopSettings);
+  const [settings, setSettings] = useState<WorkshopSettings>(workshopSettings || {
+    workingDaysPerMonth: 22,
+    expenses: [],
+    workshopName: '',
+    logoImage: null
+  });
+  
   const [workingDaysInput, setWorkingDaysInput] = useState<string>(
-    workshopSettings.workingDaysPerMonth.toString()
+    workshopSettings?.workingDaysPerMonth?.toString() || '22'
   );
+  
   const [workshopNameInput, setWorkshopNameInput] = useState<string>(
-    workshopSettings.workshopName || ''
+    workshopSettings?.workshopName || ''
   );
+  
   const [logoPreview, setLogoPreview] = useState<string | null>(
-    workshopSettings.logoImage || null
+    workshopSettings?.logoImage || null
   );
   
   // Estado para controlar a exibição do modal
@@ -67,10 +75,15 @@ export const MyWorkshop: React.FC<MyWorkshopProps> = ({ workshopSettings, onSave
   
   // Carregar as configurações da marcenaria quando o componente for montado
   useEffect(() => {
-    setSettings(workshopSettings);
-    setWorkingDaysInput(workshopSettings.workingDaysPerMonth.toString());
-    setWorkshopNameInput(workshopSettings.workshopName || '');
-    setLogoPreview(workshopSettings.logoImage || null);
+    setSettings(workshopSettings || {
+      workingDaysPerMonth: 22,
+      expenses: [],
+      workshopName: '',
+      logoImage: null
+    });
+    setWorkingDaysInput(workshopSettings?.workingDaysPerMonth?.toString() || '22');
+    setWorkshopNameInput(workshopSettings?.workshopName || '');
+    setLogoPreview(workshopSettings?.logoImage || null);
   }, [workshopSettings]);
   
   // Função para adicionar uma nova despesa
@@ -116,7 +129,7 @@ export const MyWorkshop: React.FC<MyWorkshopProps> = ({ workshopSettings, onSave
   // Função para calcular o custo diário da marcenaria
   const calculateDailyCost = (): number => {
     const totalMonthlyCost = settings.expenses.reduce(
-      (sum, expense) => sum + expense.unitValue * expense.quantity, 0
+      (sum, expense) => sum + (expense.unitValue || 0) * (expense.quantity || 0), 0
     );
     return settings.workingDaysPerMonth > 0 
       ? totalMonthlyCost / settings.workingDaysPerMonth 
@@ -153,7 +166,7 @@ export const MyWorkshop: React.FC<MyWorkshopProps> = ({ workshopSettings, onSave
   
   // Cálculo do total mensal de despesas
   const totalMonthlyExpenses = settings.expenses.reduce(
-    (sum, expense) => sum + (expense.unitValue * expense.quantity), 0
+    (sum, expense) => sum + (expense.unitValue || 0) * (expense.quantity || 0), 0
   );
   
   // Função para atualizar os dias de trabalho por mês
@@ -473,7 +486,7 @@ export const MyWorkshop: React.FC<MyWorkshopProps> = ({ workshopSettings, onSave
                         type="text"
                         inputMode="numeric"
                         pattern="[0-9]*"
-                        value={expense.quantity === 0 ? "" : expense.quantity.toString()}
+                        value={expense.quantity !== undefined && expense.quantity !== null ? (expense.quantity === 0 ? "" : expense.quantity.toString()) : ""}
                         onFocus={(e) => {
                           if (expense.quantity === 0) {
                             e.target.value = "";
@@ -508,7 +521,7 @@ export const MyWorkshop: React.FC<MyWorkshopProps> = ({ workshopSettings, onSave
                         <input
                           type="text"
                           inputMode="decimal"
-                          value={expense.unitValue === 0 ? "" : expense.unitValue.toString()}
+                          value={expense.unitValue !== undefined && expense.unitValue !== null ? (expense.unitValue === 0 ? "" : expense.unitValue.toString()) : ""}
                           onFocus={(e) => {
                             if (expense.unitValue === 0) {
                               e.target.value = "";
@@ -549,7 +562,7 @@ export const MyWorkshop: React.FC<MyWorkshopProps> = ({ workshopSettings, onSave
                       </div>
                     </td>
                     <td className="px-3 sm:px-4 py-2 sm:py-3 font-medium text-gray-900 text-xs sm:text-sm">
-                      R$ {(expense.quantity * expense.unitValue).toFixed(2)}
+                      R$ {(expense.quantity || 0) * (expense.unitValue || 0).toFixed(2)}
                     </td>
                     <td className="px-2 sm:px-4 py-2 sm:py-3 text-center">
                       <button

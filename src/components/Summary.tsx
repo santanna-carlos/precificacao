@@ -11,7 +11,6 @@ interface SummaryProps {
   isDisabled?: boolean; 
   priceType: 'normal' | 'markup'; 
   onPriceTypeChange: (type: 'normal' | 'markup') => void; 
-  markupPercentage?: number; 
 }
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];

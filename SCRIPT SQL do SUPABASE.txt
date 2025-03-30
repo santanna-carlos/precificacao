@@ -1,0 +1,235 @@
+-- Não é necessária a extensão uuid-ossp, pois gen_random_uuid() é nativo no PostgreSQL 13+
+
+-- Criar função para o trigger que define user_id automaticamente
+CREATE OR REPLACE FUNCTION set_user_id()
+RETURNS TRIGGER AS $$
+BEGIN
+    NEW.user_id = auth.uid();
+    RETURN NEW;
+END;
+$$ LANGUAGE plpgsql;
+
+-- Criar tabela clients
+CREATE TABLE clients (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    phone TEXT,
+    email TEXT,
+    address TEXT,
+    notes TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW(),
+    last_modified TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Criar trigger para clients
+CREATE TRIGGER set_clients_user_id
+    BEFORE INSERT ON clients
+    FOR EACH ROW
+    EXECUTE FUNCTION set_user_id();
+
+-- Criar tabela projects
+CREATE TABLE projects (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    name TEXT NOT NULL,
+    date DATE,
+    client_id UUID REFERENCES clients(id) ON DELETE SET NULL,
+    client_name TEXT,
+    contact_phone TEXT,
+    profitMargin FLOAT,
+    totalCost FLOAT,
+    salePrice FLOAT,
+    comments TEXT,
+    stages JSONB,
+    lastModified TIMESTAMPTZ DEFAULT NOW(),
+    fixedExpenseDays INTEGER,
+    useWorkshopForFixedExpenses BOOLEAN DEFAULT FALSE,
+    frozenDailyCost FLOAT
+);
+
+-- Criar trigger para projects
+CREATE TRIGGER set_projects_user_id
+    BEFORE INSERT ON projects
+    FOR EACH ROW
+    EXECUTE FUNCTION set_user_id();
+
+-- Criar tipo enum para project_expenses.type
+CREATE TYPE expense_type AS ENUM ('fixed', 'variable', 'material');
+
+-- Criar tabela project_expenses
+CREATE TABLE project_expenses (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    project_id UUID NOT NULL REFERENCES projects(id) ON DELETE CASCADE,
+    type expense_type NOT NULL,
+    quantity FLOAT NOT NULL,
+    unitValue FLOAT NOT NULL,
+    total FLOAT GENERATED ALWAYS AS (quantity * unitValue) STORED,
+    customType TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+ALTER TABLE projects
+ADD COLUMN price_type TEXT,
+ADD COLUMN markup_percentage FLOAT,
+ADD COLUMN estimated_completion_date DATE;
+
+-- Criar tabela workshop_settings
+CREATE TABLE workshop_settings (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    user_id UUID NOT NULL REFERENCES auth.users(id) ON DELETE CASCADE,
+    workingDaysPerMonth INTEGER NOT NULL DEFAULT 22,
+    lastUpdated TIMESTAMPTZ DEFAULT NOW(),
+    workshopName TEXT,
+    logoImage TEXT
+);
+
+-- Criar trigger para workshop_settings
+CREATE TRIGGER set_workshop_settings_user_id
+    BEFORE INSERT ON workshop_settings
+    FOR EACH ROW
+    EXECUTE FUNCTION set_user_id();
+
+-- Criar tabela workshop_expenses
+CREATE TABLE workshop_expenses (
+    id UUID PRIMARY KEY DEFAULT gen_random_uuid(),
+    workshop_settings_id UUID NOT NULL REFERENCES workshop_settings(id) ON DELETE CASCADE,
+    type TEXT NOT NULL,
+    description TEXT,
+    quantity FLOAT NOT NULL DEFAULT 1,
+    unitValue FLOAT NOT NULL DEFAULT 0,
+    note TEXT,
+    created_at TIMESTAMPTZ DEFAULT NOW()
+);
+
+-- Criar índices para melhorar desempenho
+CREATE INDEX idx_clients_user_id ON clients(user_id);
+CREATE INDEX idx_projects_user_id ON projects(user_id);
+CREATE INDEX idx_projects_client_id ON projects(client_id);
+CREATE INDEX idx_project_expenses_project_id ON project_expenses(project_id);
+CREATE INDEX idx_workshop_settings_user_id ON workshop_settings(user_id);
+CREATE INDEX idx_workshop_expenses_workshop_settings_id ON workshop_expenses(workshop_settings_id);
+
+-- Ativar RLS para todas as tabelas
+ALTER TABLE clients ENABLE ROW LEVEL SECURITY;
+ALTER TABLE projects ENABLE ROW LEVEL SECURITY;
+ALTER TABLE project_expenses ENABLE ROW LEVEL SECURITY;
+ALTER TABLE workshop_settings ENABLE ROW LEVEL SECURITY;
+ALTER TABLE workshop_expenses ENABLE ROW LEVEL SECURITY;
+
+-- Definir políticas RLS para a tabela clients
+CREATE POLICY "Users can view their own clients" ON clients
+    FOR SELECT
+    USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own clients" ON clients
+    FOR INSERT
+    WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own clients" ON clients
+    FOR UPDATE
+    USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own clients" ON clients
+    FOR DELETE
+    USING (auth.uid() = user_id);
+
+-- Definir políticas RLS para a tabela projects
+CREATE POLICY "Users can view their own projects" ON projects
+    FOR SELECT
+    USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own projects" ON projects
+    FOR INSERT
+    WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own projects" ON projects
+    FOR UPDATE
+    USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own projects" ON projects
+    FOR DELETE
+    USING (auth.uid() = user_id);
+
+-- Definir políticas RLS para a tabela project_expenses
+CREATE POLICY "Users can view expenses of their projects" ON project_expenses
+    FOR SELECT
+    USING (
+        project_id IN (
+            SELECT id FROM projects WHERE user_id = auth.uid()
+        )
+    );
+
+CREATE POLICY "Users can insert expenses for their projects" ON project_expenses
+    FOR INSERT
+    WITH CHECK (
+        project_id IN (
+            SELECT id FROM projects WHERE user_id = auth.uid()
+        )
+    );
+
+CREATE POLICY "Users can update expenses of their projects" ON project_expenses
+    FOR UPDATE
+    USING (
+        project_id IN (
+            SELECT id FROM projects WHERE user_id = auth.uid()
+        )
+    );
+
+CREATE POLICY "Users can delete expenses of their projects" ON project_expenses
+    FOR DELETE
+    USING (
+        project_id IN (
+            SELECT id FROM projects WHERE user_id = auth.uid()
+        )
+    );
+
+-- Definir políticas RLS para a tabela workshop_settings
+CREATE POLICY "Users can view their own workshop settings" ON workshop_settings
+    FOR SELECT
+    USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can insert their own workshop settings" ON workshop_settings
+    FOR INSERT
+    WITH CHECK (auth.uid() = user_id);
+
+CREATE POLICY "Users can update their own workshop settings" ON workshop_settings
+    FOR UPDATE
+    USING (auth.uid() = user_id);
+
+CREATE POLICY "Users can delete their own workshop settings" ON workshop_settings
+    FOR DELETE
+    USING (auth.uid() = user_id);
+
+-- Definir políticas RLS para a tabela workshop_expenses
+CREATE POLICY "Users can view expenses of their workshop settings" ON workshop_expenses
+    FOR SELECT
+    USING (
+        workshop_settings_id IN (
+            SELECT id FROM workshop_settings WHERE user_id = auth.uid()
+        )
+    );
+
+CREATE POLICY "Users can insert expenses for their workshop settings" ON workshop_expenses
+    FOR INSERT
+    WITH CHECK (
+        workshop_settings_id IN (
+            SELECT id FROM workshop_settings WHERE user_id = auth.uid()
+        )
+    );
+
+CREATE POLICY "Users can update expenses of their workshop settings" ON workshop_expenses
+    FOR UPDATE
+    USING (
+        workshop_settings_id IN (
+            SELECT id FROM workshop_settings WHERE user_id = auth.uid()
+        )
+    );
+
+CREATE POLICY "Users can delete expenses of their workshop settings" ON workshop_expenses
+    FOR DELETE
+    USING (
+        workshop_settings_id IN (
+            SELECT id FROM workshop_settings WHERE user_id = auth.uid()
+        )
+    );

@@ -9,6 +9,7 @@ interface AuthContextType {
   signIn: (email: string, password: string) => Promise<{ error?: any, data?: any }>;
   signOut: () => Promise<void>;
   resetPassword: (email: string) => Promise<{ error?: any, success?: boolean }>;
+  refreshSession: () => Promise<boolean>;
 }
 
 const AuthContext = createContext<AuthContextType | undefined>(undefined);
@@ -17,15 +18,50 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
   const [user, setUser] = useState<User | null>(null);
   const [loading, setLoading] = useState(true);
 
+  // Função para tentar renovar a sessão
+  const refreshSession = async (): Promise<boolean> => {
+    try {
+      const { data, error } = await supabase.auth.refreshSession();
+      
+      if (error) {
+        console.error('Erro ao renovar sessão:', error);
+        setUser(null);
+        return false;
+      }
+      
+      if (data.session) {
+        setUser(data.session.user);
+        return true;
+      }
+      
+      return false;
+    } catch (error) {
+      console.error('Erro inesperado ao renovar sessão:', error);
+      setUser(null);
+      return false;
+    }
+  };
+
   useEffect(() => {
     // Verificar se o usuário já está autenticado
     const checkUser = async () => {
       try {
         setLoading(true);
-        const { user } = await getCurrentUser();
-        setUser(user);
+        const { user, error } = await getCurrentUser();
+        
+        if (error) {
+          // Tentar renovar a sessão em caso de erro
+          const refreshed = await refreshSession();
+          if (!refreshed) {
+            console.log('Sessão não pôde ser renovada, redirecionando para login');
+          }
+        } else {
+          setUser(user);
+        }
       } catch (error) {
         console.error('Erro ao verificar usuário:', error);
+        // Tentar renovar a sessão em caso de erro
+        await refreshSession();
       } finally {
         setLoading(false);
       }
@@ -36,6 +72,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Configurar listener para mudanças na autenticação
     const { data: authListener } = supabase.auth.onAuthStateChange(
       (event, session) => {
+        console.log('Auth state changed:', event);
         setUser(session?.user || null);
         setLoading(false);
       }
@@ -55,16 +92,13 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     setUser(null);
   };
 
-  const requestPasswordReset = async (email: string) => {
-    return await resetPassword(email);
-  };
-
   const value = {
     user,
     loading,
     signIn,
     signOut,
-    resetPassword: requestPasswordReset,
+    resetPassword,
+    refreshSession
   };
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;

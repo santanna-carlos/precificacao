@@ -14,7 +14,6 @@ import { MyWorkshop } from './components/MyWorkshop';
 import { FinancialSummary } from './components/FinancialSummary';
 import { useAuth } from './contexts/AuthContext';
 import { Login } from './components/Login';
-// Importar os serviços do Supabase
 import { getProjects, createProject, updateProject, deleteProject, getProject } from './services/projectService';
 import { getClients, createClient, updateClient, deleteClient } from './services/clientService';
 import { getWorkshopSettings, saveWorkshopSettings } from './services/workshopService';
@@ -22,7 +21,6 @@ import { getWorkshopSettings, saveWorkshopSettings } from './services/workshopSe
 function App() {
   const { user, loading } = useAuth();
   
-  // Estado para controlar a exibição do kanban de projetos e da lista de clientes
   const [showProjectsKanban, setShowProjectsKanban] = useState(true);
   const [projects, setProjects] = useState<Project[]>([]);
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
@@ -37,7 +35,6 @@ function App() {
     setShowFinancialSummary(false);
     setShowProjectsKanban(true);
     
-    // Fechar a barra lateral automaticamente em dispositivos móveis
     if (window.innerWidth < 768) {
       setSidebarOpen(false);
     }
@@ -50,7 +47,6 @@ function App() {
     setShowMyWorkshop(true);
     setShowFinancialSummary(false);
     
-    // Fechar a barra lateral automaticamente em dispositivos móveis
     if (window.innerWidth < 768) {
       setSidebarOpen(false);
     }
@@ -63,23 +59,20 @@ function App() {
     setShowMyWorkshop(false);
     setShowFinancialSummary(true);
     
-    // Fechar a barra lateral automaticamente em dispositivos móveis
     if (window.innerWidth < 768) {
       setSidebarOpen(false);
     }
   };
   
-  // Estado local para o projeto ativo
   const [fixedExpenses, setFixedExpenses] = useState<ExpenseItem[]>([]);
   const [variableExpenses, setVariableExpenses] = useState<ExpenseItem[]>([]);
   const [materials, setMaterials] = useState<ExpenseItem[]>([]);
   const [profitMargin, setProfitMargin] = useState(20);
   const [priceType, setPriceType] = useState<'normal' | 'markup'>('normal');
-  const [markupPercentage, setMarkupPercentage] = useState(10);
   const [projectName, setProjectName] = useState('');
   const [clientName, setClientName] = useState('');
   const [contactPhone, setContactPhone] = useState('');
-  const [projectDate, setProjectDate] = useState<string>(new Date().toISOString().split('T')[0]); // Formato YYYY-MM-DD
+  const [projectDate, setProjectDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [projectComments, setProjectComments] = useState('');
   const [projectStages, setProjectStages] = useState<ProjectStages>({
     orcamento: { completed: false, date: null },
@@ -91,49 +84,34 @@ function App() {
     acabamento: { completed: false, date: null },
     entrega: { completed: false, date: null },
     instalacao: { completed: false, date: null },
-    projetoCancelado: { completed: false, date: null } // Adicionar o novo estágio
+    projetoCancelado: { completed: false, date: null }
   });
   
-  // Estado para controlar a visibilidade da barra lateral em dispositivos móveis
   const [sidebarOpen, setSidebarOpen] = useState(false);
-
-  // Estado para controlar o número de dias de trabalho
   const [fixedExpenseDays, setFixedExpenseDays] = useState<number | undefined>(undefined);
-
-  // Estado para controlar o uso de configurações da marcenaria para despesas fixas
   const [useWorkshopForFixedExpenses, setUseWorkshopForFixedExpenses] = useState(true);
-
-  // Estado para controlar o custo diário congelado
   const [frozenDailyCost, setFrozenDailyCost] = useState<number | undefined>(undefined);
-
-  // Estados para o autocompletar do nome do cliente
   const [clientSuggestions, setClientSuggestions] = useState<string[]>([]);
   const [showClientSuggestions, setShowClientSuggestions] = useState(false);
   const [showClientSelector, setShowClientSelector] = useState(false);
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const clientInputRef = useRef<HTMLInputElement>(null);
   
-  // Função para alternar a visibilidade da barra lateral
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
   };
 
-  // Função para atualizar o modo de cálculo para despesas fixas (automático ou manual)
   const handleToggleFixedExpenseMode = (useAutoCalculation: boolean) => {
     setUseWorkshopForFixedExpenses(useAutoCalculation);
     
-    // Se mudar para cálculo automático e houver despesas fixas manuais,
-    // perguntar ao usuário se deseja removê-las para evitar duplicação
     if (useAutoCalculation && fixedExpenses.length > 0) {
       const confirmClear = window.confirm(
         "Alternar para o modo automático removerá todas as despesas fixas manuais que você adicionou. Deseja continuar?"
       );
       
       if (confirmClear) {
-        // Limpar todas as despesas fixas manuais
         setFixedExpenses([]);
       } else {
-        // Se o usuário cancelar, reverter para o modo manual
         setUseWorkshopForFixedExpenses(false);
         return false;
       }
@@ -142,96 +120,104 @@ function App() {
     return true;
   };
 
-  // Carregar projetos e clientes do localStorage ao iniciar
   useEffect(() => {
-    const savedProjects = localStorage.getItem('projects');
-    const savedWorkshopSettings = localStorage.getItem('workshopSettings');
-    const savedClients = localStorage.getItem('clients');
-    
-    // Carregar configurações da marcenaria
-    if (savedWorkshopSettings) {
+    const loadInitialData = async () => {
+      if (!user) return;
+
       try {
-        const parsedSettings = JSON.parse(savedWorkshopSettings);
-        setWorkshopSettings(parsedSettings);
-      } catch (error) {
-        console.error('Erro ao carregar configurações da marcenaria:', error);
-      }
-    }
-    
-    // Carregar clientes
-    if (savedClients) {
-      try {
-        const parsedClients = JSON.parse(savedClients);
-        setClients(parsedClients);
-      } catch (error) {
-        console.error('Erro ao carregar clientes:', error);
-        setClients([]);
-      }
-    }
-    
-    if (savedProjects) {
-      try {
-        // Recuperar projetos do localStorage
-        const parsedProjects = JSON.parse(savedProjects);
-        
-        // Verificar e atualizar os projetos existentes para garantir que todos tenham
-        // a propriedade projetoCancelado em seus estágios
-        const updatedProjects = parsedProjects.map((project: Project) => {
-          // Se o projeto tiver estágios, mas não tiver a propriedade projetoCancelado
-          if (project.stages && !project.stages.projetoCancelado) {
-            return {
-              ...project,
-              stages: {
-                ...project.stages,
-                projetoCancelado: { completed: false, date: null }
-              }
-            };
-          }
-          
-          // Adicionar propriedade fixedExpenseDays se não existir
-          if (project.fixedExpenseDays === undefined) {
-            project.fixedExpenseDays = 1;
-          }
-          
-          return project;
+        const { data: projectsData, error: projectsError } = await getProjects();
+        if (projectsError) throw new Error(`Erro ao carregar projetos: ${projectsError.message}`);
+        setProjects(projectsData || []);
+
+        const { data: clientsData, error: clientsError } = await getClients();
+        if (clientsError) throw new Error(`Erro ao carregar clientes: ${clientsError.message}`);
+        setClients(clientsData || []);
+
+        const { data: workshopData, error: workshopError } = await getWorkshopSettings();
+        if (workshopError) throw new Error(`Erro ao carregar configurações da marcenaria: ${workshopError.message}`);
+        setWorkshopSettings(workshopData || {
+          id: '',
+          workingDaysPerMonth: 22,
+          workshopName: null,
+          logoImage: null,
+          expenses: [],
+          lastUpdated: new Date().toISOString(),
         });
-        
-        setProjects(updatedProjects);
-        
-        // Verificar se há um parâmetro de consulta 'tracking' após carregar os projetos
+
         const urlParams = new URLSearchParams(window.location.search);
         const trackingParam = urlParams.get('tracking');
         
         if (trackingParam) {
-          // Verificar se o projeto existe nos projetos carregados
-          const projectExists = updatedProjects.some((p: Project) => p.id === trackingParam);
+          const projectExists = (projectsData || []).some((p: Project) => p.id === trackingParam);
           
           if (projectExists) {
             setTrackingProjectId(trackingParam);
             setShowClientTracking(true);
             
-            // Desativar outras visualizações
             setShowProjectsKanban(false);
             setShowClientsList(false);
             setShowMyWorkshop(false);
             setShowFinancialSummary(false);
             setActiveProjectId(null);
+          } else {
+            setShowProjectsKanban(true);
+            setShowClientsList(false);
+            setShowMyWorkshop(false);
+            setShowFinancialSummary(false);
+            setActiveProjectId(null);
           }
+        } else {
+          setShowProjectsKanban(true);
+          setShowClientsList(false);
+          setShowMyWorkshop(false);
+          setShowFinancialSummary(false);
+          setActiveProjectId(null);
         }
         
-        // Se houver projetos e não estiver mostrando o kanban, selecionar o primeiro
-        // Caso contrário, manter o kanban de projetos como vista inicial
-        if (updatedProjects.length > 0 && !showProjectsKanban) {
-          setActiveProjectId(updatedProjects[0].id);
-        }
+        // Remover esta condição que pode estar definindo um activeProjectId
+        // mesmo quando showProjectsKanban é true
+        // if (projectsData && projectsData.length > 0 && !showProjectsKanban) {
+        //   setActiveProjectId(projectsData[0].id);
+        // }
       } catch (error) {
-        console.error('Erro ao carregar projetos:', error);
+        console.error('Erro ao carregar dados iniciais:', error);
         setProjects([]);
+        setClients([]);
+        setWorkshopSettings({
+          id: '',
+          workingDaysPerMonth: 22,
+          workshopName: null,
+          logoImage: null,
+          expenses: [],
+          lastUpdated: new Date().toISOString(),
+        });
       }
-    }
-  }, []);
+    };
 
-  // Carregar o projeto ativo quando o activeProjectId muda
+    loadInitialData();
+  }, [user]);
+
+  useEffect(() => {
+    // Quando o usuário não estiver autenticado (após logout), redefinir os estados para seus valores padrão
+    if (!user && !loading) {
+      setShowProjectsKanban(true);
+      setShowClientsList(false);
+      setShowMyWorkshop(false);
+      setShowFinancialSummary(false);
+      setActiveProjectId(null);
+      setProjects([]);
+      setClients([]);
+      setWorkshopSettings({
+        id: '',
+        workingDaysPerMonth: 22,
+        workshopName: null,
+        logoImage: null,
+        expenses: [],
+        lastUpdated: new Date().toISOString(),
+      });
+    }
+  }, [user, loading]);
+
   useEffect(() => {
     if (activeProjectId) {
       const activeProject = projects.find(project => project.id === activeProjectId);
@@ -246,14 +232,11 @@ function App() {
         setMaterials(activeProject.materials);
         setProfitMargin(activeProject.profitMargin);
         setPriceType(activeProject.priceType || 'normal');
-        setMarkupPercentage(activeProject.markupPercentage || 10);
         setProjectComments(activeProject.comments);
         
-        // Verificar se as etapas estão definidas
         if (activeProject.stages) {
           setProjectStages(activeProject.stages);
         } else {
-          // Inicializar etapas se não existirem
           setProjectStages({
             orcamento: { completed: false, date: null },
             projetoTecnico: { completed: false, date: null },
@@ -264,28 +247,16 @@ function App() {
             acabamento: { completed: false, date: null },
             entrega: { completed: false, date: null },
             instalacao: { completed: false, date: null },
-            projetoCancelado: { completed: false, date: null } // Adicionar o novo estágio
+            projetoCancelado: { completed: false, date: null }
           });
         }
         
-        // Carregar o número de dias de trabalho para despesas fixas
         setFixedExpenseDays(activeProject.fixedExpenseDays !== undefined ? activeProject.fixedExpenseDays : undefined);
-        
-        // Carregar o modo de cálculo para despesas fixas
         setUseWorkshopForFixedExpenses(activeProject.useWorkshopForFixedExpenses ?? true);
-        
-        // Carregar o custo diário congelado
         setFrozenDailyCost(activeProject.frozenDailyCost !== undefined ? activeProject.frozenDailyCost : undefined);
       }
     }
   }, [activeProjectId, projects]);
-
-  // Salvar projetos no localStorage quando houver mudanças
-  useEffect(() => {
-    if (projects.length > 0) {
-      localStorage.setItem('projects', JSON.stringify(projects));
-    }
-  }, [projects]);
 
   const createExpenseItem = (): ExpenseItem => ({
     id: crypto.randomUUID(),
@@ -318,15 +289,12 @@ function App() {
         if (item.id === id) {
           const updatedItem = { ...item };
           
-          // Converter valores para número quando necessário
           if (field === 'quantity' || field === 'unitValue' || field === 'total') {
             updatedItem[field] = typeof value === 'string' && value === '' ? 0 : Number(value);
           } else {
-            // Para campos do tipo string (type, customType, id)
             updatedItem[field] = value as any;
           }
           
-          // Limpar o tipo personalizado quando o tipo selecionado não for 'Outros'
           if (field === 'type' && value !== 'Outros') {
             updatedItem.customType = '';
           }
@@ -338,95 +306,91 @@ function App() {
     );
   };
 
-  // Estado para as configurações da marcenaria
   const [workshopSettings, setWorkshopSettings] = useState<WorkshopSettings>({
+    id: '',
+    workshopName: null,
+    logoImage: null,
     expenses: [],
-    workingDaysPerMonth: 22, // Valor padrão de dias úteis por mês
+    workingDaysPerMonth: 22,
+    lastUpdated: new Date().toISOString()
   });
 
-  // Função para calcular o custo diário da marcenaria
-  // IMPORTANTE: Definida antes de ser usada em calculateSummary
   const calculateDailyCost = useCallback((): number => {
     if (!workshopSettings || workshopSettings.expenses.length === 0 || !workshopSettings.workingDaysPerMonth) {
       return 0;
     }
     
-    // Calcula o custo mensal total das despesas da marcenaria
     const totalMonthlyCost = workshopSettings.expenses.reduce((sum, expense) => {
       const unitValue = parseFloat(expense.unitValue?.toString() || '0') || 0;
       return sum + unitValue;
     }, 0);
     
-    // Divide pelo número de dias úteis por mês
     return totalMonthlyCost / workshopSettings.workingDaysPerMonth;
   }, [workshopSettings]);
 
-  // Função para calcular o resumo financeiro de um projeto específico (não apenas o projeto ativo)
   const calculateProjectSummary = useCallback((projectToCalculate: Project): ProjectSummary => {
-    // Verifica se o projeto está na etapa de Projeto Técnico (congelado)
     const isProjectTechnicalStageCompleted = projectToCalculate?.stages?.projetoTecnico?.completed || false;
     
-    // Calcula as despesas fixas com base no estado do projeto
     let fixedExpensesTotal = 0;
     
     if (projectToCalculate.fixedExpenses && projectToCalculate.fixedExpenses.length > 0) {
-      // Se tem despesas fixas específicas, usa elas
       fixedExpensesTotal = projectToCalculate.fixedExpenses.reduce((sum: number, expense) => {
         const quantity = typeof expense.quantity === 'string' 
           ? (expense.quantity === '' ? 0 : parseFloat(expense.quantity)) 
           : (expense.quantity || 0);
+        const total = typeof expense.total === 'string'
+          ? (expense.total === '' ? 0 : parseFloat(expense.total))
+          : (expense.total || 0);
         const unitValue = typeof expense.unitValue === 'string'
           ? (expense.unitValue === '' ? 0 : parseFloat(expense.unitValue))
           : (expense.unitValue || 0);
-        return sum + (quantity * unitValue);
+        return sum + (total || (quantity * unitValue));
       }, 0);
     } else {
-      // Caso contrário, usa o valor calculado com base nos dias de trabalho
-      // Usando o valor congelado se o projeto estiver na etapa técnica
       const dailyCost = isProjectTechnicalStageCompleted && projectToCalculate.frozenDailyCost !== undefined
         ? projectToCalculate.frozenDailyCost
-        : calculateDailyCost(); // Usa o valor atual apenas se não estiver congelado
+        : calculateDailyCost();
         
       fixedExpensesTotal = dailyCost * ((projectToCalculate.fixedExpenseDays !== undefined) ? projectToCalculate.fixedExpenseDays : 0);
     }
 
-    // Calcula despesas variáveis
     const variableExpensesTotal = projectToCalculate.variableExpenses 
       ? projectToCalculate.variableExpenses.reduce((sum: number, expense) => {
           const quantity = typeof expense.quantity === 'string' 
             ? (expense.quantity === '' ? 0 : parseFloat(expense.quantity)) 
             : (expense.quantity || 0);
+          const total = typeof expense.total === 'string'
+            ? (expense.total === '' ? 0 : parseFloat(expense.total))
+            : (expense.total || 0);
           const unitValue = typeof expense.unitValue === 'string'
             ? (expense.unitValue === '' ? 0 : parseFloat(expense.unitValue))
             : (expense.unitValue || 0);
-          return sum + (quantity * unitValue);
+          return sum + (total || (quantity * unitValue));
         }, 0)
       : 0;
 
-    // Calcula materiais
     const materialsTotal = projectToCalculate.materials
       ? projectToCalculate.materials.reduce((sum: number, material) => {
           const quantity = typeof material.quantity === 'string' 
             ? (material.quantity === '' ? 0 : parseFloat(material.quantity)) 
             : (material.quantity || 0);
+          const total = typeof material.total === 'string'
+            ? (material.total === '' ? 0 : parseFloat(material.total))
+            : (material.total || 0);
           const unitValue = typeof material.unitValue === 'string'
             ? (material.unitValue === '' ? 0 : parseFloat(material.unitValue))
             : (material.unitValue || 0);
-          return sum + (quantity * unitValue);
+          return sum + (total || (quantity * unitValue));
         }, 0)
       : 0;
     
     const totalCost = fixedExpensesTotal + variableExpensesTotal + materialsTotal;
     const profitMarginToUse = projectToCalculate.profitMargin !== undefined ? projectToCalculate.profitMargin : 20;
     
-    // Quando a margem é 0%, o preço de venda deve ser igual ao custo total
     const salePrice = profitMarginToUse === 0 ? totalCost : totalCost / (1 - profitMarginToUse / 100);
     const profitAmount = salePrice - totalCost;
     
-    // Markup é a razão entre o preço de venda e o custo de materiais
     const markup = materialsTotal > 0 ? salePrice / materialsTotal : 1;
-    
-    // Preço de venda usando markup = Custo Total * Markup
     const markupSalePrice = totalCost * markup;
     
     return {
@@ -441,12 +405,9 @@ function App() {
     };
   }, [calculateDailyCost]);
 
-  // Função para calcular o resumo do projeto ativo atual
   const calculateSummary = useCallback((): ProjectSummary => {
-    // Encontra o projeto ativo
     const activeProject = projects.find(p => p.id === activeProjectId);
     if (!activeProject) {
-      // Retorna um resumo vazio se não encontrar o projeto ativo
       return {
         fixedExpensesTotal: 0,
         variableExpensesTotal: 0,
@@ -459,7 +420,6 @@ function App() {
       };
     }
     
-    // Usa o projeto ativo com os valores atuais (não salvos)
     const projectToCalculate: Project = {
       ...activeProject,
       fixedExpenses,
@@ -476,21 +436,18 @@ function App() {
   }, [activeProjectId, projects, fixedExpenses, variableExpenses, materials, profitMargin, 
       fixedExpenseDays, projectStages, frozenDailyCost, useWorkshopForFixedExpenses, calculateProjectSummary]);
 
-  // Função para gerenciar mudanças nos estágios do projeto
-  const handleStageChange = (
+  const handleStageChange = async (
     stageId: keyof ProjectStages,
     field: 'completed' | 'date' | 'cancellationReason' | 'realCost' | 'hasCompletionNotes' | 'completionNotes',
     value: boolean | string | number
   ) => {
     console.log(`Alterando etapa ${stageId}, campo ${field}, valor ${value}`);
     
-    // Caso específico para quando está marcando o Projeto Técnico
     if (stageId === 'projetoTecnico' && field === 'completed' && value === true) {
-      // Verificar se o nome do cliente e nome do projeto estão preenchidos
       const currentProject = projects.find(p => p.id === activeProjectId);
       if (!currentProject?.clientName || !currentProject?.name || currentProject.clientName.trim() === '' || currentProject.name.trim() === '') {
         alert("Não é possível marcar a etapa 'Projeto Técnico' sem preencher o nome do cliente e nome do projeto.");
-        return; // Se os campos obrigatórios não estiverem preenchidos, não fazer nada
+        return;
       }
       
       const confirmCheck = window.confirm(
@@ -499,19 +456,17 @@ function App() {
       
       if (!confirmCheck) {
         console.log('Operação cancelada pelo usuário');
-        return; // Se o usuário cancelar, não fazer nada
+        return;
       }
       
       console.log('Confirmação aceita pelo usuário. Congelando despesas...');
       
-      // Congelar o valor do custo diário atual
       let frozenValue = undefined;
       if (useWorkshopForFixedExpenses) {
         frozenValue = calculateDailyCost();
         console.log(`Valor diário congelado: ${frozenValue}`);
       }
       
-      // Atualizar o estado local primeiro
       const updatedStages = {
         ...projectStages,
         [stageId]: {
@@ -521,27 +476,31 @@ function App() {
         }
       };
       
-      // Atualizar todos os estados em uma única operação
       setProjectStages(updatedStages);
-      setFrozenDailyCost(frozenValue); // Definir o valor congelado
+      setFrozenDailyCost(frozenValue);
       
-      // Salvar o projeto atualizado imediatamente usando o estado atualizado
       const updatedProject = {
-        ...projects.find(p => p.id === activeProjectId)!,
+        ...currentProject!,
         stages: updatedStages,
-        frozenDailyCost: frozenValue, // Salvar o valor congelado no projeto
+        frozenDailyCost: frozenValue,
         lastModified: new Date().toISOString()
       };
       
-      setProjects(prev => prev.map(project => 
-        project.id === activeProjectId ? updatedProject : project
-      ));
+      try {
+        const { data, error } = await updateProject(updatedProject);
+        if (error) throw error;
+        setProjects(prev => prev.map(project => 
+          project.id === activeProjectId ? data! : project
+        ));
+        console.log('Projeto atualizado com sucesso e despesas fixas congeladas');
+      } catch (error) {
+        console.error('Erro ao atualizar projeto no Supabase:', error);
+        alert('Erro ao salvar as alterações no projeto.');
+      }
       
-      console.log('Projeto atualizado com sucesso e despesas fixas congeladas');
       return;
     }
     
-    // Caso específico para quando está desmarcando o Projeto Técnico
     if (stageId === 'projetoTecnico' && field === 'completed' && value === false) {
       const confirmUncheck = window.confirm(
         "Se você desmarcar a etapa Projeto Técnico, as Despesas Fixas serão atualizadas com os últimos valores inseridos na página Minha Marcenaria. Deseja continuar?"
@@ -549,12 +508,11 @@ function App() {
       
       if (!confirmUncheck) {
         console.log('Operação cancelada pelo usuário');
-        return; // Se o usuário cancelar, não fazer nada
+        return;
       }
       
       console.log('Confirmação de desmarcação aceita. Descongelando despesas...');
       
-      // Atualizar o estado local primeiro
       const updatedStages = {
         ...projectStages,
         [stageId]: {
@@ -563,11 +521,9 @@ function App() {
         }
       };
       
-      // Atualizar todos os estados em uma única operação
       setProjectStages(updatedStages);
       setFrozenDailyCost(undefined);
       
-      // Salvar o projeto atualizado imediatamente
       const updatedProject = {
         ...projects.find(p => p.id === activeProjectId)!,
         stages: updatedStages,
@@ -575,34 +531,62 @@ function App() {
         lastModified: new Date().toISOString()
       };
       
-      setProjects(prev => prev.map(project => 
-        project.id === activeProjectId ? updatedProject : project
-      ));
+      try {
+        const { data, error } = await updateProject(updatedProject);
+        if (error) throw error;
+        setProjects(prev => prev.map(project => 
+          project.id === activeProjectId ? data! : project
+        ));
+        console.log('Projeto atualizado com sucesso');
+      } catch (error) {
+        console.error('Erro ao atualizar projeto no Supabase:', error);
+        alert('Erro ao salvar as alterações no projeto.');
+      }
       
-      console.log('Projeto atualizado com sucesso');
       return;
     }
     
-    // Para todos os outros casos, atualizar o estado normalmente
-    setProjectStages(prev => ({
-      ...prev,
+    const updatedStages = {
+      ...projectStages,
       [stageId]: {
-        ...prev[stageId],
+        ...projectStages[stageId],
         [field]: value,
-        // Se estiver marcando como completado e não houver data, adicionar a data atual
-        ...(field === 'completed' && value === true && !prev[stageId].date
+        ...(field === 'completed' && value === true && !projectStages[stageId].date
           ? { date: new Date().toISOString().split('T')[0] }
           : {})
       }
-    }));
+    };
+    
+    setProjectStages(updatedStages);
+    
+    const updatedProject = {
+      ...projects.find(p => p.id === activeProjectId)!,
+      stages: updatedStages,
+      lastModified: new Date().toISOString()
+    };
+    
+    try {
+      const { data, error } = await updateProject(updatedProject);
+      if (error) throw error;
+      setProjects(prev => prev.map(project => 
+        project.id === activeProjectId ? data! : project
+      ));
+    } catch (error) {
+      console.error('Erro ao atualizar projeto no Supabase:', error);
+      alert('Erro ao salvar as alterações no projeto.');
+    }
   };
 
-  // Funções para gerenciar projetos
-  const handleCreateProject = () => {
+  const handleCreateProject = async () => {
+    if (window.innerWidth < 768) {
+      setSidebarOpen(false);
+    }
+    
     const newProject: Project = {
-      id: crypto.randomUUID(),
+      id: '',
       name: '',
       date: new Date().toISOString().split('T')[0],
+      clientId: null,
       clientName: '',
       contactPhone: '',
       fixedExpenses: [],
@@ -612,7 +596,7 @@ function App() {
       totalCost: 0,
       salePrice: 0,
       comments: '',
-      fixedExpenseDays: undefined, // Alterado para undefined
+      fixedExpenseDays: undefined,
       stages: {
         orcamento: { completed: false, date: null },
         projetoTecnico: { completed: false, date: null },
@@ -623,95 +607,108 @@ function App() {
         acabamento: { completed: false, date: null },
         entrega: { completed: false, date: null },
         instalacao: { completed: false, date: null },
-        projetoCancelado: { completed: false, date: null } // Adicionar o novo estágio
+        projetoCancelado: { completed: false, date: null }
       },
       lastModified: undefined,
       useWorkshopForFixedExpenses: true,
       frozenDailyCost: undefined,
       priceType: 'normal',
-      markupPercentage: 10
+      markupPercentage: 10,
+      estimatedCompletionDate: null
     };
 
-    setProjects(prev => [...prev, newProject]);
-    setActiveProjectId(newProject.id);
+    try {
+      const { data, error } = await createProject(newProject);
+      if (error) throw error;
+      setProjects(prev => [...prev, data!]);
+      setActiveProjectId(data!.id);
+      setShowProjectsKanban(false);
+      setShowClientsList(false);
+      setShowMyWorkshop(false);
+      setShowFinancialSummary(false);
+
+      setProjectName('');
+      setClientName('');
+      setContactPhone('');
+      setProjectDate(new Date().toISOString().split('T')[0]);
+      setFixedExpenses([]);
+      setVariableExpenses([]);
+      setMaterials([]);
+      setProfitMargin(20);
+      setProjectComments('');
+      setFixedExpenseDays(undefined);
+      setProjectStages({
+        orcamento: { completed: false, date: null },
+        projetoTecnico: { completed: false, date: null },
+        corte: { completed: false, date: null },
+        fitamento: { completed: false, date: null },
+        furacaoUsinagem: { completed: false, date: null },
+        preMontagem: { completed: false, date: null },
+        acabamento: { completed: false, date: null },
+        entrega: { completed: false, date: null },
+        instalacao: { completed: false, date: null },
+        projetoCancelado: { completed: false, date: null }
+      });
+      setUseWorkshopForFixedExpenses(true);
+      setFrozenDailyCost(undefined);
+      setPriceType('normal');
+    } catch (error) {
+      console.error('Erro ao criar projeto no Supabase:', error);
+      alert('Erro ao criar o projeto.');
+    }
+  };
+
+  const handleSelectProject = (projectId: string) => {
+    setActiveProjectId(projectId);
     setShowProjectsKanban(false);
     setShowClientsList(false);
     setShowMyWorkshop(false);
     setShowFinancialSummary(false);
-
-    // Resetar o estado do formulário
-    setProjectName('');
-    setClientName('');
-    setContactPhone('');
-    setProjectDate(new Date().toISOString().split('T')[0]);
-    setFixedExpenses([]);
-    setVariableExpenses([]);
-    setMaterials([]);
-    setProfitMargin(20);
-    setProjectComments('');
-    setFixedExpenseDays(undefined); // Alterado para undefined
-    setProjectStages({
-      orcamento: { completed: false, date: null },
-      projetoTecnico: { completed: false, date: null },
-      corte: { completed: false, date: null },
-      fitamento: { completed: false, date: null },
-      furacaoUsinagem: { completed: false, date: null },
-      preMontagem: { completed: false, date: null },
-      acabamento: { completed: false, date: null },
-      entrega: { completed: false, date: null },
-      instalacao: { completed: false, date: null },
-      projetoCancelado: { completed: false, date: null } // Adicionar o novo estágio
-    });
-    setUseWorkshopForFixedExpenses(true); // Garantir que a entrada automática esteja ativada
-    setFrozenDailyCost(undefined);
-    setPriceType('normal');
-    setMarkupPercentage(10);
   };
 
-  const handleSelectProject = (projectId: string) => {
-    // Não salvar mais automaticamente ao trocar de projeto
-    setActiveProjectId(projectId);
-  };
-
-  const handleDeleteProject = (projectId: string) => {
+  const handleDeleteProject = async (projectId: string) => {
     const projectToDelete = projects.find(p => p.id === projectId);
     if (!projectToDelete) return;
     
     const projectName = projectToDelete.name || 'Projeto sem nome';
     const clientName = projectToDelete.clientName ? `${projectToDelete.clientName} - ` : '';
     
-    // Confirmar exclusão com o usuário
     const confirmDelete = window.confirm(
       `Tem certeza que deseja excluir permanentemente o projeto "${clientName}${projectName}"? Esta ação não pode ser desfeita.`
     );
     
     if (confirmDelete) {
-      // Remover o projeto da lista
-      setProjects(prev => prev.filter(project => project.id !== projectId));
-      
-      // Se o projeto excluído for o ativo, limpar a seleção
-      if (activeProjectId === projectId) {
-        setActiveProjectId(null);
-        // Mostrar o kanban
-        setShowProjectsKanban(true);
-        setShowClientsList(false);
-        setShowMyWorkshop(false);
-        setShowFinancialSummary(false);
+      try {
+        const { success, error } = await deleteProject(projectId);
+        if (error) throw error;
+        if (success) {
+          setProjects(prev => prev.filter(project => project.id !== projectId));
+          if (activeProjectId === projectId) {
+            setActiveProjectId(null);
+            setShowProjectsKanban(true);
+            setShowClientsList(false);
+            setShowMyWorkshop(false);
+            setShowFinancialSummary(false);
+          }
+        }
+      } catch (error) {
+        console.error('Erro ao excluir projeto no Supabase:', error);
+        alert('Erro ao excluir o projeto.');
       }
-      
     }
   };
 
-  const saveCurrentProject = () => {
+  const saveCurrentProject = async () => {
     if (!projectName.trim() || !clientName.trim()) {
       alert('Por favor, insira o nome do cliente e o nome do projeto.');
       return;
     }
 
     const summary = calculateProjectSummary({
-      id: activeProjectId || crypto.randomUUID(),
+      id: activeProjectId || '',
       name: projectName,
       date: projectDate,
+      clientId: selectedClientId,
       clientName: clientName,
       contactPhone: contactPhone,
       fixedExpenses: fixedExpenses,
@@ -720,46 +717,54 @@ function App() {
       profitMargin: profitMargin,
       comments: projectComments,
       stages: projectStages,
-      totalCost: 0, // Será calculado
-      salePrice: 0, // Será calculado
+      totalCost: 0,
+      salePrice: 0,
       fixedExpenseDays: fixedExpenseDays !== undefined ? fixedExpenseDays : undefined,
       useWorkshopForFixedExpenses: useWorkshopForFixedExpenses,
       frozenDailyCost: frozenDailyCost !== undefined ? frozenDailyCost : undefined,
       priceType: priceType,
-      markupPercentage: markupPercentage
+      markupPercentage: 10,
+      estimatedCompletionDate: null
     });
     const currentDateTime = new Date().toISOString();
     
-    // Salvar o projeto atualizado com os valores calculados
-    setProjects(prev => prev.map(project => 
-      project.id === activeProjectId
-        ? {
-            ...project,
-            name: projectName,
-            date: projectDate,
-            clientName: clientName,
-            contactPhone: contactPhone,
-            fixedExpenses: fixedExpenses,
-            variableExpenses: variableExpenses,
-            materials: materials,
-            profitMargin: profitMargin,
-            comments: projectComments,
-            stages: projectStages,
-            totalCost: summary.totalCost,
-            salePrice: summary.salePrice,
-            fixedExpenseDays: fixedExpenseDays !== undefined ? fixedExpenseDays : undefined,
-            useWorkshopForFixedExpenses: useWorkshopForFixedExpenses,
-            frozenDailyCost: frozenDailyCost !== undefined ? frozenDailyCost : undefined,
-            lastModified: currentDateTime,
-            priceType: priceType,
-            markupPercentage: markupPercentage
-          }
-        : project
-    ));
+    const updatedProject = {
+      ...projects.find(project => project.id === activeProjectId)!,
+      name: projectName,
+      date: projectDate,
+      clientId: selectedClientId,
+      clientName: clientName,
+      contactPhone: contactPhone,
+      fixedExpenses: fixedExpenses,
+      variableExpenses: variableExpenses,
+      materials: materials,
+      profitMargin: profitMargin,
+      comments: projectComments,
+      stages: projectStages,
+      totalCost: summary.totalCost,
+      salePrice: summary.salePrice,
+      fixedExpenseDays: fixedExpenseDays !== undefined ? fixedExpenseDays : undefined,
+      useWorkshopForFixedExpenses: useWorkshopForFixedExpenses,
+      frozenDailyCost: frozenDailyCost !== undefined ? frozenDailyCost : undefined,
+      lastModified: currentDateTime,
+      priceType: priceType,
+      markupPercentage: 10,
+      estimatedCompletionDate: null
+    };
+    
+    try {
+      const { data, error } = await updateProject(updatedProject);
+      if (error) throw error;
+      setProjects(prev => prev.map(project => 
+        project.id === activeProjectId ? data! : project
+      ));
+    } catch (error) {
+      console.error('Erro ao salvar projeto no Supabase:', error);
+      alert('Erro ao salvar o projeto.');
+    }
   };
 
-  const handleSaveProject = () => {
-    // Verificar se os campos obrigatórios estão preenchidos antes de salvar
+  const handleSaveProject = async () => {
     if (!projectName.trim() || !clientName.trim()) {
       if (!projectName.trim() && !clientName.trim()) {
         alert('Por favor, insira o nome do cliente e o nome do projeto para salvar.');
@@ -771,35 +776,30 @@ function App() {
       return;
     }
     
-    // Se chegou aqui, os campos obrigatórios estão preenchidos, então salva o projeto
-    saveCurrentProject();
+    await saveCurrentProject();
     alert('Projeto salvo com sucesso!');
   };
 
-  // Função para normalizar texto (remover acentos e converter para minúsculas)
   const normalizeText = (text: string): string => {
     return text
       .toLowerCase()
       .normalize('NFD')
-      .replace(/[\u0300-\u036f]/g, ''); // Remove acentos
+      .replace(/[\u0300-\u036f]/g, '');
   };
 
   const handleClientNameChange = (e: React.ChangeEvent<HTMLInputElement>) => {
     const value = e.target.value;
     setClientName(value);
     
-    // Se o valor estiver vazio, não mostrar sugestões
     if (!value.trim()) {
       setClientSuggestions([]);
       setShowClientSuggestions(false);
+      setSelectedClientId(null);
       return;
     }
     
-    // Normalizar o texto de busca (remover acentos e converter para minúsculas)
     const normalizedValue = normalizeText(value);
     
-    // Buscar clientes que correspondam ao texto digitado
-    // 1. Clientes de projetos existentes
     const projectClientNames = projects
       .map(project => project.clientName)
       .filter(name => 
@@ -807,7 +807,6 @@ function App() {
         normalizeText(name).includes(normalizedValue)
       );
     
-    // 2. Clientes cadastrados diretamente
     const registeredClientNames = clients
       .map(client => client.name)
       .filter(name => 
@@ -815,12 +814,10 @@ function App() {
         normalizeText(name).includes(normalizedValue)
       );
     
-    // Combinar as duas fontes de clientes
     const allMatchingClients = [...projectClientNames, ...registeredClientNames];
     
-    // Remover duplicatas e ordenar por relevância
     const uniqueClients = Array.from(new Set(allMatchingClients))
-      .filter(name => normalizeText(name) !== normalizedValue) // Não incluir correspondências exatas
+      .filter(name => normalizeText(name) !== normalizedValue)
       .sort((a, b) => {
         const aStartsWith = normalizeText(a).startsWith(normalizedValue);
         const bStartsWith = normalizeText(b).startsWith(normalizedValue);
@@ -829,49 +826,55 @@ function App() {
         if (!aStartsWith && bStartsWith) return 1;
         return a.localeCompare(b);
       })
-      .slice(0, 5); // Limitar a 5 sugestões
+      .slice(0, 5);
     
     setClientSuggestions(uniqueClients);
     setShowClientSuggestions(uniqueClients.length > 0);
+    
+    const matchingClient = clients.find(client => normalizeText(client.name) === normalizedValue);
+    setSelectedClientId(matchingClient ? matchingClient.id : null);
   };
 
   const handleSelectClientSuggestion = (clientName: string) => {
     console.log('Selecionando sugestão:', clientName);
     
-    // Atualizar o nome do cliente
     setClientName(clientName);
     
-    // Buscar o telefone do cliente nos projetos existentes
-    const clientProjects = projects.filter(project => 
-      project.clientName === clientName
-    );
+    const matchingClient = clients.find(client => normalizeText(client.name) === normalizeText(clientName));
     
-    // Se encontrou projetos desse cliente, usar o telefone do projeto mais recente
-    if (clientProjects.length > 0) {
-      // Ordenar projetos por data (do mais recente para o mais antigo)
-      const sortedProjects = [...clientProjects].sort((a, b) => {
-        // Se não tiver data, considerar como mais antigo
-        if (!a.date) return 1;
-        if (!b.date) return -1;
-        // Comparar datas (mais recente primeiro)
-        return new Date(b.date).getTime() - new Date(a.date).getTime();
-      });
-      
-      // Pegar o telefone do projeto mais recente
-      const latestPhone = sortedProjects[0].contactPhone;
-      
-      // Se tiver telefone, atualizar o campo
-      if (latestPhone) {
-        console.log('Preenchendo telefone automaticamente:', latestPhone);
-        setContactPhone(latestPhone);
+    if (matchingClient) {
+      console.log('Cliente cadastrado encontrado:', matchingClient);
+      if (matchingClient.phone) {
+        console.log('Preenchendo telefone do cliente cadastrado:', matchingClient.phone);
+        setContactPhone(matchingClient.phone);
       }
+      setSelectedClientId(matchingClient.id);
+    } else {
+      const clientProjects = projects.filter(project => 
+        project.clientName === clientName
+      );
+      
+      if (clientProjects.length > 0) {
+        const sortedProjects = [...clientProjects].sort((a, b) => {
+          if (!a.date) return 1;
+          if (!b.date) return -1;
+          return new Date(b.date).getTime() - new Date(a.date).getTime();
+        });
+        
+        const latestPhone = sortedProjects[0].contactPhone;
+        
+        if (latestPhone) {
+          console.log('Preenchendo telefone automaticamente de projeto anterior:', latestPhone);
+          setContactPhone(latestPhone);
+        }
+      }
+      
+      setSelectedClientId(null);
     }
     
-    // Limpar as sugestões
     setClientSuggestions([]);
     setShowClientSuggestions(false);
     
-    // Focar no próximo campo com um pequeno atraso
     setTimeout(() => {
       const projectNameInput = document.querySelector('input[placeholder="Nome do Projeto"]') as HTMLInputElement;
       if (projectNameInput) {
@@ -880,7 +883,6 @@ function App() {
     }, 100);
   };
 
-  // Fechar sugestões quando clicar fora
   useEffect(() => {
     const handleClickOutside = (event: MouseEvent) => {
       if (clientInputRef.current && !clientInputRef.current.contains(event.target as Node)) {
@@ -895,27 +897,18 @@ function App() {
   }, []);
 
   const handleContactPhoneChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    // Remove todos os caracteres não numéricos
     const onlyNumbers = e.target.value.replace(/\D/g, '');
-    
-    // Limita a 11 dígitos (DDD + 9 dígitos do número)
     const limitedNumbers = onlyNumbers.slice(0, 11);
     
-    // Aplica a máscara conforme o usuário digita
     let formattedValue = '';
-    
     if (limitedNumbers.length <= 2) {
-      // Se tiver até 2 dígitos, coloca apenas os parênteses
       formattedValue = limitedNumbers.length ? `(${limitedNumbers}` : '';
     } else if (limitedNumbers.length <= 7) {
-      // Se tiver de 3 a 7 dígitos, formata como (DDD)XXXX
       formattedValue = `(${limitedNumbers.substring(0, 2)}) ${limitedNumbers.substring(2)}`;
     } else {
-      // Se tiver mais de 7 dígitos, formata como (DDD)XXXXX-XXXX
       formattedValue = `(${limitedNumbers.substring(0, 2)}) ${limitedNumbers.substring(2, 7)}-${limitedNumbers.substring(7)}`;
     }
     
-    // Atualiza o estado com o valor formatado
     setContactPhone(formattedValue);
   };
 
@@ -923,13 +916,11 @@ function App() {
     setProjectDate(e.target.value);
   };
 
-  // Função para abreviar texto se ultrapassar o limite de caracteres
   const abbreviateText = (text: string, maxLength: number = 10): string => {
     if (!text) return '';
     return text.length > maxLength ? `${text.substring(0, maxLength)}...` : text;
   };
 
-  // Função para lidar com a exibição da lista de clientes
   const handleShowClientsList = () => {
     setActiveProjectId(null);
     setShowClientsList(true);
@@ -937,34 +928,32 @@ function App() {
     setShowMyWorkshop(false);
     setShowFinancialSummary(false);
     
-    // Fechar a barra lateral automaticamente em dispositivos móveis
     if (window.innerWidth < 768) {
       setSidebarOpen(false);
     }
   };
 
-  const handleDuplicateProject = () => {
+  const handleDuplicateProject = async () => {
     if (!activeProjectId) return;
     
-    // Encontrar o projeto atual
     const currentProject = projects.find(p => p.id === activeProjectId);
     if (!currentProject) return;
     
-    // Criar um novo projeto com os dados de despesas do projeto atual
     const duplicatedProject: Project = {
-      id: crypto.randomUUID(),
-      name: '', // Nome em branco
-      date: new Date().toISOString().split('T')[0], // Data atual
-      clientName: '', // Cliente em branco
-      contactPhone: '', // Telefone em branco
-      fixedExpenses: JSON.parse(JSON.stringify(currentProject.fixedExpenses)), // Cópia profunda
-      variableExpenses: JSON.parse(JSON.stringify(currentProject.variableExpenses)), // Cópia profunda
-      materials: JSON.parse(JSON.stringify(currentProject.materials)), // Cópia profunda
+      id: '',
+      name: '',
+      date: new Date().toISOString().split('T')[0],
+      clientId: null,
+      clientName: '',
+      contactPhone: '',
+      fixedExpenses: JSON.parse(JSON.stringify(currentProject.fixedExpenses)),
+      variableExpenses: JSON.parse(JSON.stringify(currentProject.variableExpenses)),
+      materials: JSON.parse(JSON.stringify(currentProject.materials)),
       profitMargin: currentProject.profitMargin,
       totalCost: currentProject.totalCost,
       salePrice: currentProject.salePrice,
-      comments: '', // Comentários em branco
-      fixedExpenseDays: undefined, // Alterado para undefined
+      comments: '',
+      fixedExpenseDays: undefined,
       stages: {
         orcamento: { completed: false, date: null },
         projetoTecnico: { completed: false, date: null },
@@ -975,103 +964,98 @@ function App() {
         acabamento: { completed: false, date: null },
         entrega: { completed: false, date: null },
         instalacao: { completed: false, date: null },
-        projetoCancelado: { completed: false, date: null } // Adicionar o novo estágio
+        projetoCancelado: { completed: false, date: null }
       },
       lastModified: undefined,
       useWorkshopForFixedExpenses: true,
       frozenDailyCost: undefined,
       priceType: 'normal',
-      markupPercentage: 10
+      markupPercentage: 10,
+      estimatedCompletionDate: null
     };
     
-    // Inserir o novo projeto no início da lista para que apareça no topo da barra lateral
-    setProjects(prev => [duplicatedProject, ...prev]);
-    
-    // Selecionar o novo projeto
-    setActiveProjectId(duplicatedProject.id);
-    
-    // Atualizar os estados locais com os valores do novo projeto
-    setFixedExpenses(JSON.parse(JSON.stringify(currentProject.fixedExpenses)));
-    setVariableExpenses(JSON.parse(JSON.stringify(currentProject.variableExpenses)));
-    setMaterials(JSON.parse(JSON.stringify(currentProject.materials)));
-    setProfitMargin(currentProject.profitMargin);
-    setProjectName('');
-    setClientName('');
-    setContactPhone('');
-    setProjectDate(new Date().toISOString().split('T')[0]);
-    setProjectComments('');
-    setFixedExpenseDays(undefined); // Alterado para undefined
-    setProjectStages({
-      orcamento: { completed: false, date: null },
-      projetoTecnico: { completed: false, date: null },
-      corte: { completed: false, date: null },
-      fitamento: { completed: false, date: null },
-      furacaoUsinagem: { completed: false, date: null },
-      preMontagem: { completed: false, date: null },
-      acabamento: { completed: false, date: null },
-      entrega: { completed: false, date: null },
-      instalacao: { completed: false, date: null },
-      projetoCancelado: { completed: false, date: null } // Adicionar o novo estágio
-    });
-    setUseWorkshopForFixedExpenses(true);
-    setFrozenDailyCost(undefined);
-    setPriceType('normal');
-    setMarkupPercentage(10);
+    try {
+      const { data, error } = await createProject(duplicatedProject);
+      if (error) throw error;
+      setProjects(prev => [data!, ...prev]);
+      setActiveProjectId(data!.id);
+      
+      setFixedExpenses(JSON.parse(JSON.stringify(currentProject.fixedExpenses)));
+      setVariableExpenses(JSON.parse(JSON.stringify(currentProject.variableExpenses)));
+      setMaterials(JSON.parse(JSON.stringify(currentProject.materials)));
+      setProfitMargin(currentProject.profitMargin);
+      setProjectName('');
+      setClientName('');
+      setContactPhone('');
+      setProjectDate(new Date().toISOString().split('T')[0]);
+      setProjectComments('');
+      setFixedExpenseDays(undefined);
+      setProjectStages({
+        orcamento: { completed: false, date: null },
+        projetoTecnico: { completed: false, date: null },
+        corte: { completed: false, date: null },
+        fitamento: { completed: false, date: null },
+        furacaoUsinagem: { completed: false, date: null },
+        preMontagem: { completed: false, date: null },
+        acabamento: { completed: false, date: null },
+        entrega: { completed: false, date: null },
+        instalacao: { completed: false, date: null },
+        projetoCancelado: { completed: false, date: null }
+      });
+      setUseWorkshopForFixedExpenses(true);
+      setFrozenDailyCost(undefined);
+      setPriceType('normal');
+    } catch (error) {
+      console.error('Erro ao duplicar projeto no Supabase:', error);
+      alert('Erro ao duplicar o projeto.');
+    }
   };
 
-  const handleSaveWorkshopSettings = (settings: WorkshopSettings) => {
-    // Atualizar o estado com as novas configurações
-    setWorkshopSettings({...settings});
-    
-    // Salvar no localStorage
-    localStorage.setItem('workshopSettings', JSON.stringify(settings));
-    
-    // Log para depuração
-    console.log('Configurações da marcenaria atualizadas:', settings);
+  const handleSaveWorkshopSettings = async (settings: WorkshopSettings) => {
+    try {
+      const { data, error } = await saveWorkshopSettings(settings);
+      if (error) throw error;
+      setWorkshopSettings(data!);
+      console.log('Configurações da marcenaria atualizadas:', data);
+    } catch (error) {
+      console.error('Erro ao salvar configurações da marcenaria no Supabase:', error);
+      alert('Erro ao salvar as configurações da marcenaria.');
+    }
   };
 
-  // Função para atualizar o número de dias de trabalho para despesas fixas
   const handleUpdateFixedExpenseDays = (days: number | null) => {
     setFixedExpenseDays(days === null ? undefined : days);
   };
 
-  // Funções para gerenciamento de clientes
-  const handleAddClient = (client: Omit<Client, 'id' | 'createdAt'>) => {
-    if (!user) {
-      alert('Você precisa estar autenticado para adicionar um cliente.');
-      return;
+  const handleAddClient = async (client: Omit<Client, 'id' | 'createdAt'>) => {
+    try {
+      const { data, error } = await createClient(client);
+      if (error) throw error;
+      setClients(prevClients => [...prevClients, data!]);
+      return data;
+    } catch (error) {
+      console.error('Erro ao adicionar cliente no Supabase:', error);
+      alert('Erro ao adicionar o cliente.');
+      return null;
     }
-
-    const newClient: Client = {
-      ...client,
-      id: crypto.randomUUID(),
-      createdAt: new Date().toISOString(),
-      lastModified: new Date().toISOString()
-    };
-    setClients(prevClients => [...prevClients, newClient]);
-    return newClient;
   };
 
-  const handleUpdateClient = (updatedClient: Client) => {
-    if (!user) {
-      alert('Você precisa estar autenticado para atualizar um cliente.');
-      return;
+  const handleUpdateClient = async (updatedClient: Client) => {
+    try {
+      const { data, error } = await updateClient(updatedClient);
+      if (error) throw error;
+      setClients(prevClients => 
+        prevClients.map(client => 
+          client.id === updatedClient.id ? data! : client
+        )
+      );
+    } catch (error) {
+      console.error('Erro ao atualizar cliente no Supabase:', error);
+      alert('Erro ao atualizar o cliente.');
     }
-
-    setClients(prevClients => 
-      prevClients.map(client => 
-        client.id === updatedClient.id ? updatedClient : client
-      )
-    );
   };
 
-  const handleDeleteClient = (clientId: string) => {
-    if (!user) {
-      alert('Você precisa estar autenticado para excluir um cliente.');
-      return;
-    }
-
-    // Verificar se o cliente está associado a algum projeto
+  const handleDeleteClient = async (clientId: string) => {
     const clientProjects = projects.filter(project => project.clientId === clientId);
     
     if (clientProjects.length > 0) {
@@ -1082,25 +1066,43 @@ function App() {
       if (!confirmDelete) return;
     }
     
-    setClients(prevClients => prevClients.filter(client => client.id !== clientId));
+    try {
+      const { success, error } = await deleteClient(clientId);
+      if (error) throw error;
+      if (success) {
+        setClients(prevClients => prevClients.filter(client => client.id !== clientId));
+      }
+    } catch (error) {
+      console.error('Erro ao excluir cliente no Supabase:', error);
+      alert('Erro ao excluir o cliente.');
+    }
   };
 
   const [showClientTracking, setShowClientTracking] = useState(false);
   const [trackingProjectId, setTrackingProjectId] = useState<string | null>(null);
 
-  const handleUpdateProject = (projectId: string, field: string, value: any) => {
-    if (!user) {
-      alert('Você precisa estar autenticado para atualizar um projeto.');
-      return;
-    }
+  const handleUpdateProject = async (projectId: string, field: string, value: any) => {
+    const projectToUpdate = projects.find(p => p.id === projectId);
+    if (!projectToUpdate) return;
 
-    setProjects(prevProjects => 
-      prevProjects.map(p => 
-        p.id === projectId 
-          ? { ...p, [field]: value, lastModified: new Date().toISOString() } 
-          : p
-      )
-    );
+    const updatedProject = {
+      ...projectToUpdate,
+      [field]: value,
+      lastModified: new Date().toISOString()
+    };
+
+    try {
+      const { data, error } = await updateProject(updatedProject);
+      if (error) throw error;
+      setProjects(prevProjects => 
+        prevProjects.map(p => 
+          p.id === projectId ? data! : p
+        )
+      );
+    } catch (error) {
+      console.error('Erro ao atualizar projeto no Supabase:', error);
+      alert('Erro ao atualizar o projeto.');
+    }
   };
 
   const ClientTrackingView = () => {
@@ -1118,14 +1120,7 @@ function App() {
           }
 
           const { data, error } = await getProject(trackingProjectId);
-          
-          if (error) {
-            console.error('Erro ao carregar projeto:', error);
-            setError("Erro ao carregar dados do projeto");
-            setLoading(false);
-            return;
-          }
-          
+          if (error) throw error;
           if (!data) {
             setError("Projeto não encontrado");
             setLoading(false);
@@ -1135,7 +1130,7 @@ function App() {
           setProject(data);
           setLoading(false);
         } catch (error) {
-          console.error('Erro ao carregar projeto:', error);
+          console.error('Erro ao carregar projeto do Supabase:', error);
           setError("Erro ao carregar dados do projeto");
           setLoading(false);
         }
@@ -1183,7 +1178,6 @@ function App() {
       ? new Date(project.stages.projetoCancelado.date).toLocaleDateString('pt-BR') 
       : '';
     
-    // Verificar se o projeto foi finalizado (instalação concluída)
     const isProjectCompleted = project.stages.instalacao?.completed || false;
     const completionDate = project.stages.instalacao?.date 
       ? new Date(project.stages.instalacao.date).toLocaleDateString('pt-BR') 
@@ -1191,9 +1185,7 @@ function App() {
 
     const formattedEstimatedDate = project.estimatedCompletionDate 
       ? (() => {
-          // Corrigir o problema de timezone que causa a diferença de um dia
           const date = new Date(project.estimatedCompletionDate);
-          // Ajustar para o fuso horário local para evitar problemas com UTC
           const localDate = new Date(date.getTime() + date.getTimezoneOffset() * 60000);
           return localDate.toLocaleDateString('pt-BR', {
             day: '2-digit',
@@ -1213,13 +1205,15 @@ function App() {
               <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-blue-500 to-indigo-600 text-white">
                 <h1 className="text-2xl font-bold">Acompanhamento de Projeto</h1>
                 <p className="mt-1 text-lg">{project.clientName} - {project.name}</p>
-                <p className="mt-1 text-sm opacity-80">Iniciado em: {new Date(project.date).toLocaleDateString('pt-BR', { 
-                  day: '2-digit', 
-                  month: '2-digit', 
-                  year: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit'
-                })}</p>
+                <p className="mt-1 text-sm opacity-80">
+                  Iniciado em: {new Date(project.date).toLocaleDateString('pt-BR', { 
+                    day: '2-digit', 
+                    month: '2-digit', 
+                    year: 'numeric',
+                    hour: '2-digit',
+                    minute: '2-digit'
+                  })}
+                </p>
               </div>
               
               {isCanceled && (
@@ -1324,116 +1318,31 @@ function App() {
             <div className="mt-6 text-center text-sm text-gray-500">
               <p>Este é um acompanhamento em tempo real do seu projeto.</p>
               <p className="mt-1">Para mais informações, entre em contato pelo telefone informado.</p>
+              {formattedEstimatedDate && !isProjectCompleted && !isCanceled && (
+                <p className="mt-4 text-center text-sm text-blue-600 font-medium">
+                  Data prevista de entrega: {formattedEstimatedDate}
+                </p>
+              )}
             </div>
-            {formattedEstimatedDate && !isProjectCompleted && !isCanceled && (
-              <p className="mt-4 text-center text-sm text-blue-600 font-medium">
-                Data prevista de entrega: {formattedEstimatedDate}
-              </p>
-            )}
           </div>
         </div>
       </div>
     );
   };
 
-  const handleSaveClientFromProject = async () => {
-    if (!user) {
-      alert('Você precisa estar autenticado para salvar um cliente.');
-      return;
-    }
-
-    // Verificar se os campos obrigatórios estão preenchidos
-    if (!clientName.trim()) {
-      alert('Por favor, insira o nome do cliente para salvar.');
-      return;
-    }
-
-    // Verificar se o cliente já existe
-    const existingClient = clients.find(
-      client => normalizeText(client.name) === normalizeText(clientName)
-    );
-
-    if (existingClient) {
-      // Se o cliente existir, perguntar se deseja atualizar
-      const confirmUpdate = window.confirm(
-        `Um cliente com o nome "${clientName}" já existe. Deseja atualizar os dados deste cliente?`
-      );
-
-      if (confirmUpdate) {
-        // Atualizar o cliente existente
-        const updatedClient: Client = {
-          ...existingClient,
-          phone: contactPhone || existingClient.phone,
-          lastModified: new Date().toISOString()
-        };
-
-        const success = await handleUpdateClient(updatedClient);
-        if (success) {
-          alert('Cliente atualizado com sucesso!');
-          setSelectedClientId(existingClient.id);
-        }
-      }
-    } else {
-      // Se o cliente não existir, criar um novo
-      const newClient = await handleAddClient({
-        name: clientName,
-        phone: contactPhone || '',
-        email: '',
-        address: '',
-        notes: ''
-      });
-
-      if (newClient) {
-        alert('Cliente adicionado com sucesso!');
-        setSelectedClientId(newClient.id);
-      }
-    }
-  };
-
-  const handleSelectClientFromModal = (client: Client) => {
-    setSelectedClient(client);
-    setClientName(client.name);
-    setContactPhone(client.phone || '');
-    setSelectedClientId(client.id);
-    setShowClientSelector(false);
-  };
-
-  const createTrackingLink = (projectId: string) => {
-    const baseUrl = window.location.origin;
-    return `${baseUrl}?tracking=${projectId}`;
-  };
-
-  const copyTrackingLink = (projectId: string) => {
-    const link = createTrackingLink(projectId);
-    navigator.clipboard.writeText(link)
-      .then(() => {
-        alert('Link de acompanhamento copiado para a área de transferência!');
-      })
-      .catch(err => {
-        console.error('Erro ao copiar link:', err);
-        alert('Não foi possível copiar o link. Por favor, tente novamente.');
-      });
-  };
-
   return (
     <>
       {loading ? (
-        // Tela de carregamento enquanto verifica a autenticação
         <div className="min-h-screen flex items-center justify-center bg-gradient-to-b from-gray-800 to-gray-900">
           <div className="text-white text-xl">Carregando...</div>
         </div>
       ) : !user ? (
-        // Se não estiver autenticado, mostrar tela de login
         <Login />
       ) : showClientTracking ? (
-        // Se estiver autenticado e for visualização de cliente
         <ClientTrackingView />
       ) : (
-        // Se estiver autenticado e for visualização normal
         <div className="flex h-screen bg-gray-100">
-          {/* Sidebar - Responsiva */}
           <div className="relative z-50">
-            {/* Backdrop escuro para dispositivos móveis - apenas visível quando o sidebar está aberto */}
             {sidebarOpen && (
               <div 
                 className="md:hidden fixed inset-0 bg-black bg-opacity-50" 
@@ -1441,7 +1350,6 @@ function App() {
               />
             )}
             
-            {/* Container do Sidebar */}
             <div 
               className={`fixed md:relative h-full z-50 transform ${
                 sidebarOpen ? 'translate-x-0' : '-translate-x-full'
@@ -1472,15 +1380,11 @@ function App() {
             </div>
           </div>
         
-          {/* Main Content */}
           <div className="flex-1 flex flex-col overflow-auto">
-            {/* Cabeçalho - Sem classes que o tornem fixo */}
             <div className="bg-blue-600 text-white shadow-lg w-full">
               <div className="container mx-auto px-2 sm:px-4 py-3 sm:py-6">
-                {/* Linha do título */}
                 <div className="flex items-center justify-between mb-6">
                   <div className="flex items-center gap-2 sm:gap-3">
-                    {/* Botão para alternar a barra lateral em dispositivos móveis */}
                     <button 
                       className="md:hidden mr-1 sm:mr-2 text-white" 
                       onClick={toggleSidebar}
@@ -1491,12 +1395,11 @@ function App() {
                     </button>
                     <Calculator size={24} className="sm:hidden" />
                     <Calculator size={32} className="hidden sm:block" />
-                    <h1 className="text-2xl font-bold hidden sm:inline">Precificação e Gestão Inteligente para Marceneiros</h1>
-                    <h1 className="text-lg font-bold sm:hidden">Precificador</h1>
+                    <h1 className="text-2xl font-bold hidden sm:inline">Gestão de Processos e Precificação Inteligente para Marceneiros</h1>
+                    <h1 className="text-lg font-bold sm:hidden">Gestão e Precificação</h1>
                   </div>
                 </div>
                   
-                {/* Linha dos inputs - só aparece quando há um projeto ativo */}
                 {activeProjectId && (
                   <div className="w-full">
                     <div className="flex flex-wrap items-center gap-2">
@@ -1509,7 +1412,6 @@ function App() {
                           placeholder="Nome do Cliente"
                           ref={clientInputRef}
                           onFocus={() => {
-                            // Mostrar sugestões ao focar, se houver texto
                             if (clientName.trim()) {
                               handleClientNameChange({ target: { value: clientName } } as React.ChangeEvent<HTMLInputElement>);
                             }
@@ -1523,7 +1425,6 @@ function App() {
                                   key={index}
                                   className="client-suggestion-item px-3 py-2 hover:bg-blue-50 cursor-pointer flex items-center text-gray-800"
                                   onMouseDown={(e) => {
-                                    // Usar onMouseDown em vez de onClick para garantir que o evento seja capturado antes do blur
                                     e.preventDefault();
                                     console.log('Clicou na sugestão (mousedown):', suggestion);
                                     handleSelectClientSuggestion(suggestion);
@@ -1565,7 +1466,7 @@ function App() {
                         onClick={handleSaveProject}
                       >
                         <Save size={16} />
-                        <span>Salvar</span>
+                        Salvar
                       </button>
                       <button
                         className="flex items-center justify-center gap-2 px-4 py-1 h-9 bg-blue-700 text-white rounded-md hover:bg-blue-800 transition-colors"
@@ -1581,7 +1482,6 @@ function App() {
               </div>
             </div>
 
-            {/* Barra de Estágios do Projeto */}
             {activeProjectId && (
               <ProjectStagesBar 
                 stages={projectStages} 
@@ -1593,7 +1493,6 @@ function App() {
               />
             )}
 
-            {/* Conteúdo principal */}
             <div className="flex-1 p-2 sm:p-4">
               {showMyWorkshop ? (
                 <MyWorkshop 
@@ -1631,11 +1530,8 @@ function App() {
                 />
               ) : activeProjectId ? (
                 <div className="container mx-auto">
-                  {/* Layout principal com grid para desktop */}
                   <div className="grid grid-cols-1 lg:grid-cols-4 gap-4 sm:gap-6">
-                    {/* Coluna das despesas - ocupa 3/4 em desktop */}
                     <div className="lg:col-span-3 space-y-4 sm:space-y-6 order-1 lg:order-1">
-                      {/* Verificar se o projeto técnico está aprovado */}
                       {projectStages.projetoTecnico?.completed && (
                         <div className="bg-amber-100 p-4 rounded-lg mb-4 flex items-center gap-2 text-amber-800 border border-amber-300">
                           <AlertCircle size={20} />
@@ -1704,7 +1600,6 @@ function App() {
                         disabled={projectStages.projetoTecnico?.completed}
                       />
 
-                      {/* Seção de Comentários */}
                       <div className="bg-white rounded-lg shadow-md p-4 sm:p-6">
                         <h2 className="text-lg sm:text-xl font-semibold text-gray-800 mb-3 sm:mb-4 flex items-center gap-2">
                           Comentários do Orçamento
@@ -1717,19 +1612,16 @@ function App() {
                               value={projectComments}
                               onChange={(e) => {
                                 setProjectComments(e.target.value);
-                                // Ajustar altura automaticamente em todas as telas
                                 e.target.style.height = 'auto';
                                 e.target.style.height = `${e.target.scrollHeight}px`;
                               }}
                               onFocus={(e) => {
-                                // Definir altura mínima ao focar
                                 if (!e.target.value) {
                                   e.target.style.height = '100px';
                                 }
                               }}
                               ref={(textarea) => {
                                 if (textarea) {
-                                  // Ajustar altura inicial com base no conteúdo
                                   textarea.style.height = 'auto';
                                   textarea.style.height = projectComments 
                                     ? `${Math.max(100, textarea.scrollHeight)}px` 
@@ -1741,10 +1633,9 @@ function App() {
                         </div>
                       </div>
 
-                      {/* Botão Salvar no final da página */}
                       <div className="mt-4 sm:mt-6 flex justify-center">
                         <button
-                          className="flex items-center justify-center gap-2 px-4 py-2 sm:px-6 sm:py-3 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors mx-auto"
+                          className="flex items-center justify-center gap-2 px-4 py-2 sm:px-6 sm:py-3 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
                           onClick={handleSaveProject}
                         >
                           <Save size={20} />
@@ -1753,7 +1644,6 @@ function App() {
                       </div>
                     </div>
 
-                    {/* Resumo do Projeto - Lateral direita em desktop, ocupa 1/4 */}
                     <div className="lg:col-span-1 order-2 lg:order-2">
                       <div className="lg:sticky lg:top-4">
                         <Summary 
@@ -1764,9 +1654,7 @@ function App() {
                           onSaveProject={handleSaveProject}
                           priceType={priceType}
                           onPriceTypeChange={setPriceType}
-                          markupPercentage={markupPercentage}
                         />
-                        {/* Data da última modificação */}
                         <div className="mt-2 text-xs text-gray-400 text-right">
                           {activeProjectId && (
                             <>
@@ -1797,7 +1685,7 @@ function App() {
                     <h2 className="text-2xl font-semibold text-gray-700 mb-4">Nenhum projeto selecionado</h2>
                     <p className="text-gray-500 mb-6">Crie um novo projeto ou selecione um existente para começar</p>
                     <button
-                      className="flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors mx-auto"
+                      className="flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
                       onClick={handleCreateProject}
                     >
                       <Plus size={20} />
