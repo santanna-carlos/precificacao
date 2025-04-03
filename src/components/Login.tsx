@@ -74,7 +74,6 @@ export function Login() {
                 <span className="bg-gradient-to-r from-blue-600 via-blue-500 to-blue-400 bg-clip-text text-transparent">
                   Marcenaria Pro
                 </span>
-                {/* Linha decorativa removida */}
               </h1>
               <span className="text-gray-600 text-sm mt-2">Gestão e Precificação para Marceneiros</span>
             </div>
