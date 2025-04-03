@@ -66,10 +66,18 @@ export function Login() {
   return (
     <div className="min-h-screen flex flex-col items-center justify-between bg-gradient-to-b from-gray-800 to-gray-900 p-4 py-6">
       {/* Conteúdo principal centralizado */}
-      <div className="flex-1 flex items-center justify-center w-full">
+      <div className="flex-1 flex flex-col items-center justify-center w-full">
         <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
-          <div className="text-center mb-6">
-            <h1 className="text-2xl font-bold bg-gradient-to-r from-blue-600 to-blue-400 bg-clip-text text-transparent mb-2">Gestão e Precificação para Marceneiros</h1>
+          <div className="text-center mb-8">
+            <div className="flex flex-col items-center">
+              <h1 className="text-3xl font-bold mb-2 relative">
+                <span className="bg-gradient-to-r from-blue-600 via-blue-500 to-blue-400 bg-clip-text text-transparent">
+                  Marcenaria Pro
+                </span>
+                {/* Linha decorativa removida */}
+              </h1>
+              <span className="text-gray-600 text-sm mt-2">Gestão e Precificação para Marceneiros</span>
+            </div>
           </div>
           
           {error && (
@@ -219,11 +227,11 @@ export function Login() {
             </>
           )}
         </div>
-      </div>
-      
-      {/* Rodapé com o texto "Desenvolvido por..." */}
-      <div className="text-gray-400 text-sm whitespace-nowrap mt-4 text-center">
-        Desenvolvido por José Carlos Sant'Anna
+        
+        {/* Texto de crédito abaixo da caixa branca */}
+        <div className="text-gray-400 text-sm mt-4 text-center">
+          Desenvolvido por José Carlos Sant'Anna
+        </div>
       </div>
     </div>
   );

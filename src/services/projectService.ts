@@ -25,7 +25,34 @@ const projectToDbFormat = (project: Project) => {
 
 // Função para converter o formato do projeto do banco de dados para o frontend
 const dbToProjectFormat = (dbProject: any, expenses: ExpenseItem[]): Project => {
-  return {
+  // Log para depuração
+  console.log('Dados brutos do banco de dados:', dbProject);
+  console.log('Data prevista no banco:', dbProject.estimated_completion_date);
+  
+  // Tratamento da data prevista
+  let estimatedDate = null;
+  if (dbProject.estimated_completion_date) {
+    try {
+      // Converter a data ISO para o formato esperado pelo input date (YYYY-MM-DD)
+      const date = new Date(dbProject.estimated_completion_date);
+      estimatedDate = date.toISOString().split('T')[0];
+      console.log('Data prevista convertida:', estimatedDate);
+    } catch (error) {
+      console.error('Erro ao converter data prevista:', error);
+      // Se houver erro na conversão, tentar usar a string diretamente
+      // Isso é útil caso a data já esteja no formato YYYY-MM-DD
+      if (typeof dbProject.estimated_completion_date === 'string') {
+        estimatedDate = dbProject.estimated_completion_date;
+        console.log('Usando data prevista como string:', estimatedDate);
+      } else {
+        estimatedDate = null;
+      }
+    }
+  } else {
+    console.log('Nenhuma data prevista encontrada no objeto do banco');
+  }
+  
+  const project = {
     id: dbProject.id,
     name: dbProject.name,
     date: dbProject.date,
@@ -56,8 +83,14 @@ const dbToProjectFormat = (dbProject: any, expenses: ExpenseItem[]): Project => 
     useWorkshopForFixedExpenses: dbProject.useWorkshopForFixedExpenses,
     frozenDailyCost: dbProject.frozenDailyCost,
     priceType: dbProject.price_type || 'normal',
-    estimatedCompletionDate: dbProject.estimated_completion_date || null,
-    };
+    estimatedCompletionDate: estimatedDate,
+  };
+  
+  // Log para verificar o objeto final
+  console.log('Projeto convertido para o frontend:', project);
+  console.log('Data prevista após conversão:', project.estimatedCompletionDate);
+  
+  return project;
 };
 
 // Função para salvar as despesas do projeto
@@ -161,13 +194,33 @@ export const createProject = async (project: Project): Promise<{ data: Project |
 // Função para atualizar um projeto existente
 export const updateProject = async (project: Project): Promise<{ data: Project | null, error: any }> => {
   try {
+    // Adicionar log para debug
+    console.log('Atualizando projeto no Supabase:', project);
+    console.log('Data prevista sendo enviada:', project.estimatedCompletionDate);
+    
+    // Preparar os dados para atualização, garantindo que a data prevista seja tratada corretamente
+    const updateData = {
+      ...projectToDbFormat(project),
+      lastModified: new Date().toISOString(),
+    };
+    
+    // Verificar e formatar a data prevista explicitamente
+    if (project.estimatedCompletionDate) {
+      // Garantir que a data esteja em formato ISO (YYYY-MM-DD)
+      updateData.estimated_completion_date = project.estimatedCompletionDate;
+      console.log('Data prevista formatada para envio:', updateData.estimated_completion_date);
+    } else {
+      console.log('Nenhuma data prevista encontrada no objeto do projeto');
+      // Definir explicitamente como null para garantir que o campo seja atualizado no banco
+      updateData.estimated_completion_date = null;
+    }
+    
+    console.log('Dados completos sendo enviados para atualização:', updateData);
+    
     // Atualizar o projeto no banco
     const { data, error } = await supabase
       .from('projects')
-      .update({
-        ...projectToDbFormat(project),
-        lastModified: new Date().toISOString(),
-      })
+      .update(updateData)
       .eq('id', project.id)
       .select()
       .single();
@@ -177,6 +230,9 @@ export const updateProject = async (project: Project): Promise<{ data: Project |
       return { data: null, error };
     }
 
+    console.log('Resposta do Supabase após atualização:', data);
+    console.log('Data prevista na resposta do Supabase:', data.estimated_completion_date);
+    
     // Atualizar as despesas do projeto
     await saveProjectExpenses(project.id, project.fixedExpenses, 'fixed');
     await saveProjectExpenses(project.id, project.variableExpenses, 'variable');
@@ -184,8 +240,13 @@ export const updateProject = async (project: Project): Promise<{ data: Project |
 
     // Obter as despesas para montar o objeto Project
     const expenses = await getProjectExpenses(project.id);
+    
+    // Criar o objeto de retorno com os dados atualizados
+    const updatedProject = dbToProjectFormat(data, expenses);
+    console.log('Projeto final após atualização:', updatedProject);
+    console.log('Data prevista no projeto final:', updatedProject.estimatedCompletionDate);
 
-    return { data: dbToProjectFormat(data, expenses), error: null };
+    return { data: updatedProject, error: null };
   } catch (error) {
     console.error('Erro inesperado ao atualizar projeto:', error);
     return { data: null, error };

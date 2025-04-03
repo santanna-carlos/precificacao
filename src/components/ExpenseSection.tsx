@@ -198,7 +198,7 @@ export function ExpenseSection({
                     <tr key={item.id} className="border-b">
                       <td className="px-2 sm:px-4 py-2">
                         <select
-                          value={item.customType && EXPENSE_OPTIONS[type].includes(item.customType) ? item.customType : item.type}
+                          value={item.customType && (EXPENSE_OPTIONS as { [key: string]: string[] })[type]?.includes(item.customType as any) ? item.customType : item.type}
                           onChange={(e) => {
                             if (disabled) return;
                             
@@ -217,7 +217,7 @@ export function ExpenseSection({
                           className={`w-full p-1 sm:p-2 text-xs sm:text-sm border border-gray-300 rounded-md ${disabled ? 'bg-gray-100' : ''}`}
                         >
                           <option value="">Selecione...</option>
-                          {EXPENSE_OPTIONS[type].map((option) => (
+                          {(EXPENSE_OPTIONS as { [key: string]: string[] })[type]?.map((option) => (
                             <option key={option} value={option}>
                               {option}
                             </option>

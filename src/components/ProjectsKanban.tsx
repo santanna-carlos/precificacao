@@ -200,7 +200,16 @@ export function ProjectsKanban({ projects, onSelectProject, onDeleteProject }: P
   return (
     <div className="container mx-auto px-4 py-6">
       <div className="flex flex-col md:flex-row justify-between items-start md:items-center mb-6 gap-4">
-        <h1 className="text-2xl font-bold text-gray-800">Visão Geral dos Projetos</h1>
+        <div>
+          <h1 className="text-2xl font-bold text-gray-800">Visão Geral dos Projetos</h1>
+          {/* Contador de projetos totais e cancelados */}
+          <div className="mt-2 flex items-center">
+            <span className="text-sm bg-blue-50 text-blue-700 px-3 py-1 rounded-full font-medium">
+              Total de projetos: {projects.length} {projects.filter(p => p.stages?.projetoCancelado?.completed).length > 0 && 
+                `- ${projects.filter(p => p.stages?.projetoCancelado?.completed).length} cancelado(s)`}
+            </span>
+          </div>
+        </div>
         
         <div className="flex flex-wrap items-center gap-2">
           {/* Botão para mostrar/esconder filtros */}

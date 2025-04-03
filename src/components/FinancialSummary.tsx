@@ -1,5 +1,5 @@
 import React, { useMemo, useState, useEffect } from 'react';
-import { Project } from '../types';
+import { Project, WorkshopSettings } from '../types';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
   PieChart, Pie, Cell, LineChart, Line
@@ -8,9 +8,12 @@ import { DollarSign, TrendingUp, Calendar, BarChart3, ChevronDown } from 'lucide
 
 interface FinancialSummaryProps {
   projects: Project[];
+  workshopSettings: WorkshopSettings;
+  onBack: () => void;
+  onDeleteProject: (projectId: string) => Promise<void>;
 }
 
-export function FinancialSummary({ projects }: FinancialSummaryProps) {
+export function FinancialSummary({ projects, workshopSettings, onBack, onDeleteProject }: FinancialSummaryProps) {
   // Estado para controlar o ano selecionado
   const [selectedYear, setSelectedYear] = useState<number>(new Date().getFullYear());
   const [showYearDropdown, setShowYearDropdown] = useState(false);
@@ -51,6 +54,11 @@ export function FinancialSummary({ projects }: FinancialSummaryProps) {
     return filtered;
   }, [projects]);
 
+  // Calcular o número total de projetos concluídos
+  const totalProjects = useMemo(() => {
+    return completedProjects.length;
+  }, [completedProjects]);
+
   // Função auxiliar para obter o preço correto do projeto com base no tipo de preço definido em cada projeto
   const getProjectPrice = (project: Project) => {
     // Se o projeto não tiver preço de venda ou custo total, retornar 0
@@ -69,7 +77,7 @@ export function FinancialSummary({ projects }: FinancialSummaryProps) {
               ? (material.unitValue === '' ? 0 : parseFloat(material.unitValue))
               : (material.unitValue || 0);
             const itemTotal = quantity * unitValue;
-            console.log(`Material: ${material.name || 'sem nome'}, Quantidade: ${quantity}, Valor unitário: ${unitValue}, Total: ${itemTotal}`);
+            console.log(`Material: ${material.type || 'sem nome'}, Quantidade: ${quantity}, Valor unitário: ${unitValue}, Total: ${itemTotal}`);
             return sum + itemTotal;
           }, 0)
         : 0;
@@ -242,7 +250,9 @@ export function FinancialSummary({ projects }: FinancialSummaryProps) {
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
 
   // Calcular estatísticas gerais considerando o tipo de preço definido em cada projeto
-  const totalRevenue = completedProjects.reduce((sum, project) => sum + getProjectPrice(project), 0);
+  const totalRevenue = useMemo(() => {
+    return completedProjects.reduce((sum, project) => sum + getProjectPrice(project), 0);
+  }, [completedProjects, getProjectPrice]);
   
   // Calcular o faturamento anual (apenas para o ano selecionado)
   const annualRevenue = useMemo(() => {
@@ -261,9 +271,22 @@ export function FinancialSummary({ projects }: FinancialSummaryProps) {
       
       return sum;
     }, 0);
-  }, [completedProjects, selectedYear]);
+  }, [completedProjects, selectedYear, getProjectPrice]);
   
-  const totalProjects = completedProjects.length;
+  // Calcular o faturamento médio mensal com base no faturamento anual
+  const monthlyAverageRevenue = useMemo(() => {
+    const currentDate = new Date();
+    const currentYear = currentDate.getFullYear();
+    const currentMonth = currentDate.getMonth() + 1; // Janeiro é 0, então somamos 1
+    
+    // Se o ano selecionado é o ano atual, dividir pelo número de meses decorridos
+    if (selectedYear === currentYear) {
+      return currentMonth > 0 ? annualRevenue / currentMonth : 0;
+    } else {
+      // Para anos anteriores, dividir por 12 meses
+      return annualRevenue / 12;
+    }
+  }, [annualRevenue, selectedYear]);
   
   // Calcular o número de projetos concluídos no ano selecionado
   const annualProjects = useMemo(() => {
@@ -294,7 +317,7 @@ export function FinancialSummary({ projects }: FinancialSummaryProps) {
       </div>
 
       {/* Cards de estatísticas */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
         <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center">
@@ -315,6 +338,29 @@ export function FinancialSummary({ projects }: FinancialSummaryProps) {
               >
                 {showAnnualRevenue ? 'Ver Total' : 'Ver Anual'}
               </button>
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-indigo-50 rounded-lg p-4 border border-indigo-100">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center">
+              <div className="bg-indigo-500 rounded-full p-2 mr-3">
+                <DollarSign size={20} className="text-white" />
+              </div>
+              <div>
+                <p className="text-sm text-indigo-700">Faturamento Médio Mensal</p>
+                <p className="text-xl font-bold text-indigo-900">
+                  {monthlyAverageRevenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                </p>
+              </div>
+            </div>
+            <div className="mt-1">
+              <p className="text-xs text-indigo-600 text-center sm:text-left">
+                {selectedYear === new Date().getFullYear() ? 
+                  `Média: ${new Date().getMonth() + 1} ${window.innerWidth < 640 ? 'meses' : 'meses decorridos'}` : 
+                  'Média: anual (12 meses)'}
+              </p>
             </div>
           </div>
         </div>
@@ -350,7 +396,7 @@ export function FinancialSummary({ projects }: FinancialSummaryProps) {
         </div>
       </div>
 
-      {completedProjects.length === 0 ? (
+      {totalProjects === 0 ? (
         <div className="text-center py-10 bg-gray-50 rounded-lg border border-gray-200">
           <Calendar size={48} className="mx-auto text-gray-300 mb-4" />
           <h3 className="text-lg font-medium text-gray-700 mb-2">Nenhum projeto concluído</h3>
@@ -396,25 +442,49 @@ export function FinancialSummary({ projects }: FinancialSummaryProps) {
             
             <div className="bg-white border border-gray-200 rounded-lg p-4 h-72">
               <ResponsiveContainer width="100%" height="100%">
-                <BarChart data={monthlyRevenueData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                <BarChart
+                  data={monthlyRevenueData}
+                  margin={{
+                    top: 5,
+                    right: 10,
+                    left: 0,
+                    bottom: 20,
+                  }}
+                >
                   <CartesianGrid strokeDasharray="3 3" />
-                  <XAxis dataKey="month" />
+                  <XAxis 
+                    dataKey="month" 
+                    tick={{ fontSize: window.innerWidth < 640 ? 10 : 12 }} 
+                    tickMargin={8}
+                  />
                   <YAxis 
-                    tickFormatter={(value) => 
-                      value.toLocaleString('pt-BR', { 
-                        style: 'currency', 
-                        currency: 'BRL',
-                        maximumFractionDigits: 0 
-                      })
-                    }
+                    tickFormatter={(value) => value.toLocaleString('pt-BR', { 
+                      style: 'currency', 
+                      currency: 'BRL',
+                      notation: window.innerWidth < 640 ? 'compact' : 'standard',
+                      maximumFractionDigits: window.innerWidth < 640 ? 0 : 2
+                    })}
+                    tick={{ fontSize: window.innerWidth < 640 ? 10 : 12 }}
+                    width={window.innerWidth < 640 ? 60 : 80}
                   />
                   <Tooltip 
-                    formatter={(value: number) => 
-                      value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })
-                    }
+                    formatter={(value: number) => [
+                      value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
+                      'Faturamento'
+                    ]}
+                    labelFormatter={(label) => `Mês: ${label}`}
                   />
-                  <Legend />
-                  <Bar dataKey="value" name="Faturamento" fill="#0088FE" />
+                  <Legend 
+                    wrapperStyle={{ fontSize: window.innerWidth < 640 ? 10 : 12 }}
+                    verticalAlign="bottom"
+                    height={window.innerWidth < 640 ? 20 : 36}
+                  />
+                  <Bar 
+                    dataKey="value" 
+                    name="Faturamento" 
+                    fill="#3b82f6" 
+                    radius={[4, 4, 0, 0]}
+                  />
                 </BarChart>
               </ResponsiveContainer>
             </div>
@@ -431,18 +501,51 @@ export function FinancialSummary({ projects }: FinancialSummaryProps) {
                       data={projectsByValueRange}
                       cx="50%"
                       cy="50%"
-                      labelLine={true}
-                      label={({ name, count }) => `${name}: ${count}`}
+                      labelLine={false}
                       outerRadius={80}
+                      innerRadius={30}
+                      paddingAngle={2}
                       fill="#8884d8"
                       dataKey="count"
+                      label={({ name, percent }) => {
+                        // Abreviar os nomes para o label no gráfico
+                        const shortName = name
+                          .replace('Até R$', '≤ R$')
+                          .replace('Acima de R$', '> R$')
+                          .replace('.000', 'K');
+                        return `${(percent * 100).toFixed(0)}%`;
+                      }}
                     >
                       {projectsByValueRange.map((entry, index) => (
-                        <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                        <Cell 
+                          key={`cell-${index}`} 
+                          fill={COLORS[index % COLORS.length]} 
+                          stroke="#fff"
+                          strokeWidth={1}
+                        />
                       ))}
                     </Pie>
-                    <Tooltip formatter={(value: number) => [value, 'Projetos']} />
-                    <Legend />
+                    <Tooltip 
+                      formatter={(value: number) => [value, 'Projetos']}
+                      labelFormatter={(name) => `Faixa: ${name}`}
+                    />
+                    <Legend 
+                      layout="horizontal"
+                      verticalAlign="bottom"
+                      align="center"
+                      wrapperStyle={{ 
+                        fontSize: 10,
+                        paddingTop: 10,
+                        width: '100%'
+                      }}
+                      formatter={(value) => {
+                        // Abreviar os nomes para a legenda
+                        return value
+                          .replace('Até R$', '≤ R$')
+                          .replace('Acima de R$', '> R$')
+                          .replace('.000', 'K');
+                      }}
+                    />
                   </PieChart>
                 </ResponsiveContainer>
               </div>
@@ -453,16 +556,41 @@ export function FinancialSummary({ projects }: FinancialSummaryProps) {
               <h3 className="text-lg font-semibold text-gray-800 mb-4">Margem de Lucro Média</h3>
               <div className="bg-white border border-gray-200 rounded-lg p-4 h-80">
                 <ResponsiveContainer width="100%" height="100%">
-                  <LineChart data={averageProfitData} margin={{ top: 20, right: 30, left: 20, bottom: 5 }}>
+                  <LineChart 
+                    data={averageProfitData} 
+                    margin={{ top: 5, right: 10, left: 0, bottom: 20 }}
+                  >
                     <CartesianGrid strokeDasharray="3 3" />
-                    <XAxis dataKey="month" />
+                    <XAxis 
+                      dataKey="month" 
+                      tick={{ fontSize: 10 }}
+                      tickMargin={8}
+                    />
                     <YAxis 
                       tickFormatter={(value) => `${value.toFixed(0)}%`}
                       domain={[0, 'dataMax + 10']}
+                      tick={{ fontSize: 10 }}
+                      width={40}
                     />
-                    <Tooltip formatter={(value: number) => [`${value.toFixed(2)}%`, 'Margem média']} />
-                    <Legend />
-                    <Line type="monotone" dataKey="value" name="Margem de Lucro (%)" stroke="#FF8042" strokeWidth={2} />
+                    <Tooltip 
+                      formatter={(value: number) => [`${value.toFixed(2)}%`, 'Margem média']}
+                      labelFormatter={(label) => `Mês: ${label}`}
+                      contentStyle={{ fontSize: 12 }}
+                    />
+                    <Legend 
+                      wrapperStyle={{ fontSize: 10 }}
+                      verticalAlign="bottom"
+                      height={20}
+                    />
+                    <Line 
+                      type="monotone" 
+                      dataKey="value" 
+                      name="Margem de Lucro" 
+                      stroke="#FF8042" 
+                      strokeWidth={2}
+                      dot={{ r: 3, strokeWidth: 1 }}
+                      activeDot={{ r: 5, strokeWidth: 0 }}
+                    />
                   </LineChart>
                 </ResponsiveContainer>
               </div>

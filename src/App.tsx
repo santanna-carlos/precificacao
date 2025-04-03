@@ -1,7 +1,7 @@
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { 
   Calculator, Menu, X, Save, Copy, 
-  Plus, AlertCircle, Search, Check, XCircle
+  Plus, AlertCircle, Search, Check, XCircle, Loader2
 } from 'lucide-react';
 import { ExpenseSection } from './components/ExpenseSection';
 import { Summary } from './components/Summary';
@@ -144,7 +144,7 @@ const ClientTrackingView = () => {
           <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6">
             <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-blue-500 to-indigo-600 text-white">
               <h1 className="text-2xl font-bold">Acompanhamento de Projeto</h1>
-              <p className="mt-1 text-lg">{project.clientName || project.client?.name || ''} - {project.name || project.projectName || ''}</p>
+              <p className="mt-1 text-lg">{project.clientName || ''} - {project.name || ''}</p>
               <p className="mt-1 text-sm opacity-80">
                 Iniciado em: {new Date(project.date).toLocaleDateString('pt-BR', { 
                   day: '2-digit', 
@@ -331,7 +331,7 @@ function App() {
       }
     }
   }, [user, loading]);
-  
+
   const handleShowProjectsKanban = () => {
     setActiveProjectId(null);
     setShowClientsList(false);
@@ -394,6 +394,7 @@ function App() {
   const [contactPhone, setContactPhone] = useState('');
   const [projectDate, setProjectDate] = useState<string>(new Date().toISOString().split('T')[0]);
   const [projectComments, setProjectComments] = useState('');
+  const [hasUnsavedChanges, setHasUnsavedChanges] = useState(false);
   const [projectStages, setProjectStages] = useState<ProjectStages>({
     orcamento: { completed: false, date: null },
     projetoTecnico: { completed: false, date: null },
@@ -417,6 +418,8 @@ function App() {
   const [selectedClientId, setSelectedClientId] = useState<string | null>(null);
   const clientInputRef = useRef<HTMLInputElement>(null);
   
+  const [estimatedCompletionDate, setEstimatedCompletionDate] = useState('');
+
   const toggleSidebar = () => {
     setSidebarOpen(!sidebarOpen);
   };
@@ -449,15 +452,69 @@ function App() {
         const storedNavigationState = sessionStorage.getItem('navigationState');
         const hasStoredState = !!storedNavigationState;
         
-        // Carregar projetos
-        const { data: projectsData, error: projectsError } = await getProjects();
-        if (projectsError) throw projectsError;
-        setProjects(projectsData || []);
+        // Verificar se já carregamos dados nesta sessão
+        const dataAlreadyLoaded = sessionStorage.getItem('dataAlreadyLoaded') === 'true';
         
-        // Carregar clientes
-        const { data: clientsData, error: clientsError } = await getClients();
-        if (clientsError) throw clientsError;
-        setClients(clientsData || []);
+        // Verificar se é um novo login
+        const isNewLogin = sessionStorage.getItem('userAuthenticated') !== 'true';
+        
+        // Verificar se devemos forçar a recarga dos dados do Supabase (definido durante o login no AuthContext)
+        const forceDataReload = localStorage.getItem('forceDataReload') === 'true';
+        
+        // Se for um novo login, se os dados ainda não foram carregados nesta sessão,
+        // ou se forceDataReload está ativo, carregar do Supabase
+        if (isNewLogin || !dataAlreadyLoaded || forceDataReload) {
+          console.log('Novo login, primeira carga de dados ou recarga forçada, carregando do Supabase...');
+          
+          // Carregar projetos do Supabase
+          const { data: projectsData, error: projectsError } = await getProjects();
+          if (projectsError) throw projectsError;
+          setProjects(projectsData || []);
+          
+          // Salvar no localStorage para uso futuro
+          localStorage.setItem('cachedProjects', JSON.stringify(projectsData || []));
+          console.log('Projetos carregados do Supabase e salvos no localStorage');
+          
+          // Carregar clientes do Supabase
+          const { data: clientsData, error: clientsError } = await getClients();
+          if (clientsError) throw clientsError;
+          setClients(clientsData || []);
+          
+          // Salvar no localStorage para uso futuro
+          localStorage.setItem('cachedClients', JSON.stringify(clientsData || []));
+          console.log('Clientes carregados do Supabase e salvos no localStorage');
+          
+          // Marcar que o usuário está autenticado
+          sessionStorage.setItem('userAuthenticated', 'true');
+          
+          // Marcar que já carregamos os dados nesta sessão
+          sessionStorage.setItem('dataAlreadyLoaded', 'true');
+          
+          // Limpar a flag forceDataReload após a carga
+          if (forceDataReload) {
+            localStorage.removeItem('forceDataReload');
+            console.log('Flag forceDataReload removida após recarga dos dados');
+          }
+          
+        } else {
+          console.log('Dados já carregados nesta sessão, usando cache...');
+          
+          // Tentar carregar projetos do localStorage
+          const localProjects = localStorage.getItem('cachedProjects');
+          if (localProjects) {
+            const parsedProjects = JSON.parse(localProjects);
+            setProjects(parsedProjects);
+            console.log('Projetos carregados do localStorage');
+          }
+          
+          // Tentar carregar clientes do localStorage
+          const localClients = localStorage.getItem('cachedClients');
+          if (localClients) {
+            const parsedClients = JSON.parse(localClients);
+            setClients(parsedClients);
+            console.log('Clientes carregados do localStorage');
+          }
+        }
         
         // Carregar configurações da marcenaria
         const loadWorkshopSettings = async () => {
@@ -472,29 +529,31 @@ function App() {
               console.log('Configurações da marcenaria carregadas do localStorage');
             }
             
-            // Tentar carregar do Supabase
-            const { data, error } = await getWorkshopSettings();
-            
-            if (error) {
-              console.error('Erro ao carregar configurações da marcenaria do Supabase:', error);
-              // Se não temos dados locais e houve erro, criar configurações padrão
-              if (!localStorageSettings) {
-                const defaultSettings = {
-                  id: '',
-                  workingDaysPerMonth: 22,
-                  workshopName: '',
-                  logoImage: null,
-                  expenses: [],
-                  lastUpdated: new Date().toISOString()
-                };
-                setWorkshopSettings(defaultSettings);
-                localStorage.setItem('workshopSettings', JSON.stringify(defaultSettings));
+            // Só carregar do Supabase se não temos dados no localStorage ou se é um novo login
+            if (!localStorageSettings || isNewLogin) {
+              // Tentar carregar do Supabase
+              const { data, error } = await getWorkshopSettings();
+              
+              if (error) {
+                console.error('Erro ao carregar configurações da marcenaria do Supabase:', error);
+                // Se não temos dados locais e houve erro, criar configurações padrão
+                if (!localStorageSettings) {
+                  const defaultSettings = {
+                    workingDaysPerMonth: 22,
+                    workshopName: '', 
+                    logoImage: undefined,
+                    expenses: [],
+                    lastUpdated: new Date().toISOString()
+                  };
+                  setWorkshopSettings(defaultSettings);
+                  localStorage.setItem('workshopSettings', JSON.stringify(defaultSettings));
+                }
+              } else if (data) {
+                // Se carregou com sucesso do Supabase, atualizar o estado e o localStorage
+                setWorkshopSettings(data);
+                localStorage.setItem('workshopSettings', JSON.stringify(data));
+                console.log('Configurações da marcenaria atualizadas do Supabase');
               }
-            } else if (data) {
-              // Se carregou com sucesso do Supabase, atualizar o estado e o localStorage
-              setWorkshopSettings(data);
-              localStorage.setItem('workshopSettings', JSON.stringify(data));
-              console.log('Configurações da marcenaria atualizadas do Supabase');
             }
           } catch (error) {
             console.error('Erro ao carregar configurações da marcenaria:', error);
@@ -503,10 +562,9 @@ function App() {
             if (!localStorageSettings) {
               // Se não temos dados locais, criar configurações padrão
               const defaultSettings = {
-                id: '',
                 workingDaysPerMonth: 22,
-                workshopName: null,
-                logoImage: null,
+                workshopName: '', 
+                logoImage: undefined,
                 expenses: [],
                 lastUpdated: new Date().toISOString()
               };
@@ -528,7 +586,7 @@ function App() {
             console.log('Parâmetro de tracking encontrado:', trackingParam);
             
             // Verificar se o projeto existe no Supabase
-            const projectExists = projectsData?.some(project => project.id === trackingParam);
+            const projectExists = projects.find(project => project.id === trackingParam);
             
             // Verificar também no localStorage (para casos onde o projeto pode não estar no Supabase ainda)
             const localProjects = JSON.parse(localStorage.getItem('projects') || '[]');
@@ -572,10 +630,9 @@ function App() {
         setProjects([]);
         setClients([]);
         setWorkshopSettings({
-          id: '',
           workingDaysPerMonth: 22,
-          workshopName: null,
-          logoImage: null,
+          workshopName: '', 
+          logoImage: undefined,
           expenses: [],
           lastUpdated: new Date().toISOString()
         });
@@ -597,10 +654,9 @@ function App() {
       setProjects([]);
       setClients([]);
       setWorkshopSettings({
-        id: '',
         workingDaysPerMonth: 22,
-        workshopName: null,
-        logoImage: null,
+        workshopName: '', 
+        logoImage: undefined,
         expenses: [],
         lastUpdated: new Date().toISOString()
       });
@@ -609,9 +665,50 @@ function App() {
 
   useEffect(() => {
     if (activeProjectId) {
+      console.log('Carregando projeto com ID:', activeProjectId);
+      
+      // Verificar primeiro se temos dados de edição temporários no localStorage
+      const tempEditKey = `editing_project_${activeProjectId}`;
+      const tempEditData = localStorage.getItem(tempEditKey);
+      
+      if (tempEditData) {
+        try {
+          // Se temos dados temporários, usá-los em vez de recarregar
+          console.log('Usando dados temporários do localStorage para o projeto:', activeProjectId);
+          const projectData = JSON.parse(tempEditData);
+          console.log('Dados temporários encontrados:', projectData);
+          console.log('Data prevista nos dados temporários:', projectData.estimatedCompletionDate);
+          
+          // Atualizar todos os estados com os dados temporários
+          setProjectName(projectData.name);
+          setClientName(projectData.clientName);
+          setContactPhone(projectData.contactPhone);
+          setProjectDate(projectData.date);
+          setFixedExpenses(projectData.fixedExpenses);
+          setVariableExpenses(projectData.variableExpenses);
+          setMaterials(projectData.materials);
+          setProfitMargin(projectData.profitMargin);
+          setProjectComments(projectData.comments);
+          setProjectStages(projectData.stages);
+          setFixedExpenseDays(projectData.fixedExpenseDays);
+          setUseWorkshopForFixedExpenses(projectData.useWorkshopForFixedExpenses);
+          setFrozenDailyCost(projectData.frozenDailyCost);
+          setEstimatedCompletionDate(projectData.estimatedCompletionDate || '');
+          
+          return; // Sair do useEffect sem carregar do banco
+        } catch (error) {
+          console.error('Erro ao processar dados temporários:', error);
+          // Em caso de erro, continuar com o carregamento normal
+        }
+      }
+      
+      // Se não temos dados temporários, carregar do array de projetos
       const activeProject = projects.find(project => project.id === activeProjectId);
+      console.log('Projeto encontrado no array de projetos:', activeProject);
       
       if (activeProject) {
+        console.log('Data prevista no projeto encontrado:', activeProject.estimatedCompletionDate);
+        
         setProjectName(activeProject.name);
         setClientName(activeProject.clientName);
         setContactPhone(activeProject.contactPhone);
@@ -642,9 +739,88 @@ function App() {
         setFixedExpenseDays(activeProject.fixedExpenseDays !== undefined ? activeProject.fixedExpenseDays : undefined);
         setUseWorkshopForFixedExpenses(activeProject.useWorkshopForFixedExpenses ?? true);
         setFrozenDailyCost(activeProject.frozenDailyCost !== undefined ? activeProject.frozenDailyCost : undefined);
+        
+        // Garantir que a data prevista seja definida corretamente, mesmo que seja uma string vazia
+        console.log('Definindo data prevista para:', activeProject.estimatedCompletionDate || '');
+        setEstimatedCompletionDate(activeProject.estimatedCompletionDate || '');
       }
     }
   }, [activeProjectId, projects]);
+
+  useEffect(() => {
+    if (!user || !activeProjectId) return;
+    
+    // Só salvar temporariamente se estiver em edição (não tiver concluído "Projeto Técnico")
+    const currentProject = projects.find(p => p.id === activeProjectId);
+    const isProjectTechnicalStageCompleted = currentProject?.stages?.projetoTecnico?.completed || false;
+    
+    if (!isProjectTechnicalStageCompleted) {
+      // Salvar os dados atuais do projeto que está sendo editado
+      const tempData = {
+        name: projectName,
+        clientName: clientName,
+        contactPhone: contactPhone,
+        date: projectDate,
+        fixedExpenses: fixedExpenses,
+        variableExpenses: variableExpenses,
+        materials: materials,
+        profitMargin: profitMargin,
+        comments: projectComments,
+        stages: projectStages,
+        fixedExpenseDays: fixedExpenseDays,
+        useWorkshopForFixedExpenses: useWorkshopForFixedExpenses,
+        frozenDailyCost: frozenDailyCost,
+        estimatedCompletionDate: estimatedCompletionDate,
+        lastSaved: new Date().toISOString()
+      };
+      
+      // Usar localStorage em vez de sessionStorage para persistir entre recargas
+      localStorage.setItem(`editing_project_${activeProjectId}`, JSON.stringify(tempData));
+      console.log(`Dados temporários do projeto ${activeProjectId} salvos no localStorage`);
+    }
+  }, [
+    user, activeProjectId, projectName, clientName, contactPhone, projectDate,
+    fixedExpenses, variableExpenses, materials, profitMargin, projectComments,
+    projectStages, fixedExpenseDays, useWorkshopForFixedExpenses, frozenDailyCost, estimatedCompletionDate, projects
+  ]);
+
+  useEffect(() => {
+    const tempEditKey = `editing_project_${activeProjectId}`;
+    const tempEditData = localStorage.getItem(tempEditKey);
+    
+    if (tempEditData) {
+      try {
+        const projectData = JSON.parse(tempEditData);
+        
+        if (projectData.name !== projectName ||
+            projectData.clientName !== clientName ||
+            projectData.contactPhone !== contactPhone ||
+            projectData.date !== projectDate ||
+            JSON.stringify(projectData.fixedExpenses) !== JSON.stringify(fixedExpenses) ||
+            JSON.stringify(projectData.variableExpenses) !== JSON.stringify(variableExpenses) ||
+            JSON.stringify(projectData.materials) !== JSON.stringify(materials) ||
+            projectData.profitMargin !== profitMargin ||
+            projectData.comments !== projectComments ||
+            JSON.stringify(projectData.stages) !== JSON.stringify(projectStages) ||
+            projectData.fixedExpenseDays !== fixedExpenseDays ||
+            projectData.useWorkshopForFixedExpenses !== useWorkshopForFixedExpenses ||
+            projectData.frozenDailyCost !== frozenDailyCost ||
+            projectData.estimatedCompletionDate !== estimatedCompletionDate) {
+          setHasUnsavedChanges(true);
+        } else {
+          setHasUnsavedChanges(false);
+        }
+      } catch (error) {
+        console.error('Erro ao verificar alterações temporárias:', error);
+      }
+    } else {
+      setHasUnsavedChanges(false);
+    }
+  }, [
+    activeProjectId, projectName, clientName, contactPhone, projectDate,
+    fixedExpenses, variableExpenses, materials, profitMargin, projectComments,
+    projectStages, fixedExpenseDays, useWorkshopForFixedExpenses, frozenDailyCost, estimatedCompletionDate
+  ]);
 
   const createExpenseItem = (): ExpenseItem => ({
     id: crypto.randomUUID(),
@@ -695,11 +871,10 @@ function App() {
   };
 
   const [workshopSettings, setWorkshopSettings] = useState<WorkshopSettings>({
-    id: '',
-    workshopName: null,
-    logoImage: null,
-    expenses: [],
     workingDaysPerMonth: 22,
+    workshopName: '', 
+    logoImage: undefined,
+    expenses: [],
     lastUpdated: new Date().toISOString()
   });
 
@@ -874,6 +1049,30 @@ function App() {
         lastModified: new Date().toISOString()
       };
       
+      // Salvar imediatamente no localStorage para prevenir dessincronização
+      if (activeProjectId) {
+        const tempData = {
+          name: projectName,
+          clientName: clientName,
+          contactPhone: contactPhone,
+          date: projectDate,
+          fixedExpenses: fixedExpenses,
+          variableExpenses: variableExpenses,
+          materials: materials,
+          profitMargin: profitMargin,
+          comments: projectComments,
+          stages: updatedStages, // Usar os estágios atualizados
+          fixedExpenseDays: fixedExpenseDays,
+          useWorkshopForFixedExpenses: useWorkshopForFixedExpenses,
+          frozenDailyCost: frozenValue,
+          estimatedCompletionDate: estimatedCompletionDate,
+          lastSaved: new Date().toISOString()
+        };
+        
+        localStorage.setItem(`editing_project_${activeProjectId}`, JSON.stringify(tempData));
+        console.log(`Dados temporários atualizados no localStorage após mudança na etapa ${stageId}`);
+      }
+      
       try {
         const { data, error } = await updateProject(updatedProject);
         if (error) throw error;
@@ -913,11 +1112,35 @@ function App() {
       setFrozenDailyCost(undefined);
       
       const updatedProject = {
-        ...projects.find(p => p.id === activeProjectId)!,
+        ...projects.find(project => project.id === activeProjectId)!,
         stages: updatedStages,
         frozenDailyCost: undefined,
         lastModified: new Date().toISOString()
       };
+      
+      // Salvar imediatamente no localStorage para prevenir dessincronização
+      if (activeProjectId) {
+        const tempData = {
+          name: projectName,
+          clientName: clientName,
+          contactPhone: contactPhone,
+          date: projectDate,
+          fixedExpenses: fixedExpenses,
+          variableExpenses: variableExpenses,
+          materials: materials,
+          profitMargin: profitMargin,
+          comments: projectComments,
+          stages: updatedStages, // Usar os estágios atualizados
+          fixedExpenseDays: fixedExpenseDays,
+          useWorkshopForFixedExpenses: useWorkshopForFixedExpenses,
+          frozenDailyCost: undefined,
+          estimatedCompletionDate: estimatedCompletionDate,
+          lastSaved: new Date().toISOString()
+        };
+        
+        localStorage.setItem(`editing_project_${activeProjectId}`, JSON.stringify(tempData));
+        console.log(`Dados temporários atualizados no localStorage após desmarcação da etapa ${stageId}`);
+      }
       
       try {
         const { data, error } = await updateProject(updatedProject);
@@ -952,6 +1175,30 @@ function App() {
       stages: updatedStages,
       lastModified: new Date().toISOString()
     };
+    
+    // Salvar imediatamente no localStorage para prevenir dessincronização
+    if (activeProjectId) {
+      const tempData = {
+        name: projectName,
+        clientName: clientName,
+        contactPhone: contactPhone,
+        date: projectDate,
+        fixedExpenses: fixedExpenses,
+        variableExpenses: variableExpenses,
+        materials: materials,
+        profitMargin: profitMargin,
+        comments: projectComments,
+        stages: updatedStages, // Usar os estágios atualizados
+        fixedExpenseDays: fixedExpenseDays,
+        useWorkshopForFixedExpenses: useWorkshopForFixedExpenses,
+        frozenDailyCost: frozenDailyCost,
+        estimatedCompletionDate: estimatedCompletionDate,
+        lastSaved: new Date().toISOString()
+      };
+      
+      localStorage.setItem(`editing_project_${activeProjectId}`, JSON.stringify(tempData));
+      console.log(`Dados temporários atualizados no localStorage após alteração na etapa ${stageId}`);
+    }
     
     try {
       const { data, error } = await updateProject(updatedProject);
@@ -1005,7 +1252,6 @@ function App() {
       useWorkshopForFixedExpenses: true,
       frozenDailyCost: undefined,
       priceType: 'normal',
-      markupPercentage: 10,
       estimatedCompletionDate: null
     };
 
@@ -1032,7 +1278,6 @@ function App() {
       setMaterials([]);
       setProfitMargin(20);
       setProjectComments('');
-      setFixedExpenseDays(undefined);
       setProjectStages({
         orcamento: { completed: false, date: null },
         projetoTecnico: { completed: false, date: null },
@@ -1047,7 +1292,7 @@ function App() {
       });
       setUseWorkshopForFixedExpenses(true);
       setFrozenDailyCost(undefined);
-      setPriceType('normal');
+      setEstimatedCompletionDate(null);
     } catch (error) {
       console.error('Erro ao criar projeto no Supabase:', error);
       alert('Erro ao criar o projeto.');
@@ -1096,11 +1341,15 @@ function App() {
     }
   };
 
+  const [isSaving, setIsSaving] = useState(false);
+
   const saveCurrentProject = async () => {
     if (!projectName.trim() || !clientName.trim()) {
       alert('Por favor, insira o nome do cliente e o nome do projeto.');
       return;
     }
+
+    setIsSaving(true);
 
     const summary = calculateProjectSummary({
       id: activeProjectId || '',
@@ -1121,8 +1370,7 @@ function App() {
       useWorkshopForFixedExpenses: useWorkshopForFixedExpenses,
       frozenDailyCost: frozenDailyCost !== undefined ? frozenDailyCost : undefined,
       priceType: priceType,
-      markupPercentage: 10,
-      estimatedCompletionDate: null
+      estimatedCompletionDate: estimatedCompletionDate
     });
     const currentDateTime = new Date().toISOString();
     
@@ -1147,18 +1395,38 @@ function App() {
       lastModified: currentDateTime,
       priceType: priceType,
       markupPercentage: 10,
-      estimatedCompletionDate: null
+      estimatedCompletionDate: estimatedCompletionDate
     };
     
     try {
       const { data, error } = await updateProject(updatedProject);
       if (error) throw error;
+      
+      // Atualizar a lista de projetos local
       setProjects(prev => prev.map(project => 
         project.id === activeProjectId ? data! : project
       ));
+      
+      // Limpar dados temporários do localStorage, já que agora estão salvos no Supabase
+      if (activeProjectId) {
+        localStorage.removeItem(`editing_project_${activeProjectId}`);
+        console.log('Dados temporários removidos do localStorage após salvamento');
+      }
+      
+      // Resetar o estado de alterações não salvas
+      setHasUnsavedChanges(false);
+      console.log('Estado de alterações não salvas resetado após salvamento');
+      
+      setTimeout(() => {
+        setIsSaving(false);
+      }, 1500); // Mesmo tempo usado no ProjectStagesBar
+      
+      return true;
     } catch (error) {
       console.error('Erro ao salvar projeto no Supabase:', error);
       alert('Erro ao salvar o projeto.');
+      setIsSaving(false);
+      return false;
     }
   };
 
@@ -1369,10 +1637,9 @@ function App() {
       useWorkshopForFixedExpenses: true,
       frozenDailyCost: undefined,
       priceType: 'normal',
-      markupPercentage: 10,
       estimatedCompletionDate: null
     };
-    
+
     try {
       const { data, error } = await createProject(duplicatedProject);
       if (error) throw error;
@@ -1388,7 +1655,6 @@ function App() {
       setContactPhone('');
       setProjectDate(new Date().toISOString().split('T')[0]);
       setProjectComments('');
-      setFixedExpenseDays(undefined);
       setProjectStages({
         orcamento: { completed: false, date: null },
         projetoTecnico: { completed: false, date: null },
@@ -1403,7 +1669,7 @@ function App() {
       });
       setUseWorkshopForFixedExpenses(true);
       setFrozenDailyCost(undefined);
-      setPriceType('normal');
+      setEstimatedCompletionDate(null);
     } catch (error) {
       console.error('Erro ao duplicar projeto no Supabase:', error);
       alert('Erro ao duplicar o projeto.');
@@ -1495,18 +1761,40 @@ function App() {
   const [trackingProjectId, setTrackingProjectId] = useState<string | null>(null);
 
   const handleUpdateProject = async (projectId: string, field: string, value: any) => {
+    console.log(`handleUpdateProject chamado com campo ${field} e valor:`, value);
+    
     const projectToUpdate = projects.find(p => p.id === projectId);
-    if (!projectToUpdate) return;
+    if (!projectToUpdate) {
+      console.error('Projeto não encontrado:', projectId);
+      return;
+    }
 
+    console.log('Projeto antes da atualização:', projectToUpdate);
+    
+    // Criar uma cópia do projeto para atualização
     const updatedProject = {
       ...projectToUpdate,
       [field]: value,
       lastModified: new Date().toISOString()
     };
 
+    console.log('Projeto após atualização local:', updatedProject);
+    
     try {
       const { data, error } = await updateProject(updatedProject);
-      if (error) throw error;
+      
+      if (error) {
+        console.error('Erro ao atualizar projeto no Supabase:', error);
+        throw error;
+      }
+      
+      console.log('Resposta do Supabase após updateProject:', data);
+      
+      // Verificar especificamente a data prevista
+      if (field === 'estimatedCompletionDate') {
+        console.log('Data prevista no objeto retornado:', data?.estimatedCompletionDate);
+      }
+      
       setProjects(prevProjects => 
         prevProjects.map(p => 
           p.id === projectId ? data! : p
@@ -1561,6 +1849,111 @@ function App() {
   if (isPublicTracking) {
     return <ClientTrackingView />;
   }
+
+  useEffect(() => {
+    if (projects.length > 0) {
+      localStorage.setItem('cachedProjects', JSON.stringify(projects));
+      console.log('Projetos salvos no localStorage');
+    }
+  }, [projects]);
+
+  useEffect(() => {
+    if (clients.length > 0) {
+      localStorage.setItem('cachedClients', JSON.stringify(clients));
+      console.log('Clientes salvos no localStorage');
+    }
+  }, [clients]);
+
+  useEffect(() => {
+    if (!user && !loading) {
+      sessionStorage.removeItem('dataAlreadyLoaded');
+      sessionStorage.removeItem('userAuthenticated');
+      console.log('Flags de sessão removidas após logout');
+    }
+  }, [user, loading]);
+
+  // Verificar alterações não salvas comparando o estado atual com o projeto salvo
+  useEffect(() => {
+    if (!activeProjectId || !projects.length) return;
+    
+    const currentProject = projects.find(project => project.id === activeProjectId);
+    if (!currentProject) return;
+    
+    // Adicionar logs detalhados para diagnóstico
+    console.log('Verificando alterações não salvas para o projeto:', activeProjectId);
+    console.log('Estado atual da data prevista:', estimatedCompletionDate);
+    console.log('Data prevista no projeto salvo:', currentProject.estimatedCompletionDate);
+    
+    // Normalizar valores para comparação
+    // Converter null/undefined para string vazia para evitar falsos positivos
+    const normalizeValue = (value: any) => {
+      if (value === null || value === undefined) return '';
+      return value;
+    };
+    
+    // Normalizar datas para comparação
+    const normalizeDate = (dateStr: string | null) => {
+      if (!dateStr) return '';
+      // Remover parte de hora se existir
+      if (dateStr.includes('T')) {
+        return dateStr.split('T')[0];
+      }
+      return dateStr;
+    };
+    
+    const hasChanges = (
+      projectName !== currentProject.name ||
+      clientName !== currentProject.clientName ||
+      contactPhone !== currentProject.contactPhone ||
+      projectDate !== currentProject.date ||
+      JSON.stringify(fixedExpenses) !== JSON.stringify(currentProject.fixedExpenses) ||
+      JSON.stringify(variableExpenses) !== JSON.stringify(currentProject.variableExpenses) ||
+      JSON.stringify(materials) !== JSON.stringify(currentProject.materials) ||
+      profitMargin !== currentProject.profitMargin ||
+      projectComments !== currentProject.comments ||
+      JSON.stringify(projectStages) !== JSON.stringify(currentProject.stages) ||
+      fixedExpenseDays !== currentProject.fixedExpenseDays ||
+      useWorkshopForFixedExpenses !== currentProject.useWorkshopForFixedExpenses ||
+      frozenDailyCost !== currentProject.frozenDailyCost ||
+      normalizeDate(normalizeValue(estimatedCompletionDate)) !== normalizeDate(normalizeValue(currentProject.estimatedCompletionDate))
+    );
+
+    // Adicionar log para debug
+    if (hasChanges) {
+      console.log('Alterações não salvas detectadas no projeto', activeProjectId);
+      console.log('Nome do projeto alterado:', projectName !== currentProject.name);
+      console.log('Nome do cliente alterado:', clientName !== currentProject.clientName);
+      console.log('Telefone alterado:', contactPhone !== currentProject.contactPhone);
+      console.log('Data alterada:', projectDate !== currentProject.date);
+      console.log('Data prevista alterada:', 
+        normalizeDate(normalizeValue(estimatedCompletionDate)) !== 
+        normalizeDate(normalizeValue(currentProject.estimatedCompletionDate))
+      );
+      console.log('Data prevista atual (normalizada):', normalizeDate(normalizeValue(estimatedCompletionDate)));
+      console.log('Data prevista salva (normalizada):', normalizeDate(normalizeValue(currentProject.estimatedCompletionDate)));
+    } else {
+      console.log('Projeto sem alterações não salvas');
+    }
+    
+    setHasUnsavedChanges(hasChanges);
+  }, [
+    activeProjectId,
+    projectName,
+    clientName,
+    contactPhone,
+    projectDate,
+    fixedExpenses,
+    variableExpenses,
+    materials,
+    profitMargin,
+    projectComments,
+    projectStages,
+    fixedExpenseDays,
+    useWorkshopForFixedExpenses,
+    frozenDailyCost,
+    estimatedCompletionDate,
+    projects
+  ]);
 
   return (
     <>
@@ -1631,8 +2024,16 @@ function App() {
                     </button>
                     <Calculator size={24} className="sm:hidden" />
                     <Calculator size={32} className="hidden sm:block" />
-                    <h1 className="text-2xl font-bold hidden sm:inline">Gestão de Processos e Precificação Inteligente para Marceneiros</h1>
-                    <h1 className="text-lg font-bold sm:hidden">Gestão e Precificação</h1>
+                    <div className="flex flex-col">
+                      <h1 className="text-2xl font-bold hidden sm:inline">Gestão de Processos e Precificação Inteligente para Marceneiros</h1>
+                      <h1 className="text-lg font-bold sm:hidden">Gestão e Precificação</h1>
+                      {hasUnsavedChanges && activeProjectId && (
+                        <div className="text-xs sm:text-sm text-amber-200 flex items-center animate-pulse transition-opacity duration-1000">
+                          <AlertCircle size={14} />
+                          <span>&nbsp;Alterações não salvas</span>
+                        </div>
+                      )}
+                    </div>
                   </div>
                 </div>
                   
@@ -1698,18 +2099,28 @@ function App() {
                         title="Data de Criação"
                       />
                       <button
-                        className="flex items-center justify-center gap-2 px-4 py-1 h-9 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+                        className="flex items-center justify-center gap-2 px-4 py-1 h-9 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors disabled:bg-green-400 disabled:cursor-not-allowed"
                         onClick={handleSaveProject}
+                        disabled={isSaving}
                       >
-                        <Save size={16} />
-                        Salvar
+                        {isSaving ? (
+                          <>
+                            <Loader2 size={20} className="animate-spin" />
+                            Salvando...
+                          </>
+                        ) : (
+                          <>
+                            <Save size={20} />
+                            Salvar Projeto
+                          </>
+                        )}
                       </button>
                       <button
                         className="flex items-center justify-center gap-2 px-4 py-1 h-9 bg-blue-700 text-white rounded-md hover:bg-blue-800 transition-colors"
                         onClick={handleDuplicateProject}
                         title="Duplicar projeto"
                       >
-                        <Copy size={16} />
+                        <Copy size={20} />
                         <span className="hidden sm:inline">Duplicar</span>
                       </button>
                     </div>
@@ -1721,11 +2132,12 @@ function App() {
             {activeProjectId && (
               <ProjectStagesBar 
                 stages={projectStages} 
-                onChange={handleStageChange}
-                projectId={activeProjectId}
-                clientName={clientName}
+                onChange={handleStageChange} 
+                projectId={activeProjectId!}
                 projectName={projectName}
+                clientName={clientName}
                 onUpdateProject={handleUpdateProject}
+                estimatedCompletionDate={estimatedCompletionDate}
               />
             )}
 
@@ -1887,11 +2299,21 @@ function App() {
 
                       <div className="mt-4 sm:mt-6 flex justify-center">
                         <button
-                          className="flex items-center justify-center gap-2 px-4 py-2 sm:px-6 sm:py-3 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors"
+                          className="flex items-center justify-center gap-2 px-4 py-2 sm:px-6 sm:py-3 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors disabled:bg-green-400 disabled:cursor-not-allowed"
                           onClick={handleSaveProject}
+                          disabled={isSaving}
                         >
-                          <Save size={20} />
-                          Salvar Projeto
+                          {isSaving ? (
+                            <>
+                              <Loader2 size={20} className="animate-spin" />
+                              Salvando...
+                            </>
+                          ) : (
+                            <>
+                              <Save size={20} />
+                              Salvar Projeto
+                            </>
+                          )}
                         </button>
                       </div>
                     </div>

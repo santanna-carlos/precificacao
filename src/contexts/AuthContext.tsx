@@ -46,17 +46,76 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     // Verificar se o usuário já está autenticado
     const checkUser = async () => {
       try {
-        setLoading(true);
-        const { user, error } = await getCurrentUser();
+        // Verificar primeiro se já temos o usuário no localStorage (mais persistente que sessionStorage)
+        const storedUserSession = localStorage.getItem('userSession');
         
+        if (storedUserSession) {
+          try {
+            const storedUser = JSON.parse(storedUserSession);
+            console.log('Usando sessão do usuário armazenada no localStorage');
+            setUser(storedUser);
+            
+            // Manter também no sessionStorage para compatibilidade
+            sessionStorage.setItem('userSession', storedUserSession);
+            
+            // Criar um identificador de sessão persistente
+            const sessionToken = localStorage.getItem('supabase_session_token');
+            if (!sessionToken) {
+              localStorage.setItem('supabase_session_token', storedUser.id + '_' + Date.now());
+            }
+            
+            setLoading(false);
+            return;
+          } catch (error) {
+            console.error('Erro ao processar sessão armazenada no localStorage:', error);
+            // Continuar com o sessionStorage em caso de erro
+          }
+        }
+        
+        // Tentar o sessionStorage como fallback
+        const sessionStoredUserSession = sessionStorage.getItem('userSession');
+        if (sessionStoredUserSession) {
+          try {
+            const storedUser = JSON.parse(sessionStoredUserSession);
+            console.log('Usando sessão do usuário armazenada no sessionStorage');
+            setUser(storedUser);
+            
+            // Sincronizar com localStorage para persistência melhorada
+            localStorage.setItem('userSession', sessionStoredUserSession);
+            
+            // Criar um identificador de sessão persistente
+            const sessionToken = localStorage.getItem('supabase_session_token');
+            if (!sessionToken) {
+              localStorage.setItem('supabase_session_token', storedUser.id + '_' + Date.now());
+            }
+            
+            setLoading(false);
+            return;
+          } catch (error) {
+            console.error('Erro ao processar sessão armazenada no sessionStorage:', error);
+            // Continuar verificação com Supabase em caso de erro
+          }
+        }
+        
+        // Se não encontramos nem no localStorage nem no sessionStorage, verificar com o Supabase
+        console.log('Verificando sessão com Supabase...');
+        const { user, error } = await getCurrentUser();
         if (error) {
-          // Tentar renovar a sessão em caso de erro
           const refreshed = await refreshSession();
           if (!refreshed) {
             console.log('Sessão não pôde ser renovada, redirecionando para login');
           }
         } else {
           setUser(user);
+          // Armazenar o usuário em ambos storages para mais robustez
+          if (user) {
+            const userJson = JSON.stringify(user);
+            localStorage.setItem('userSession', userJson);
+            sessionStorage.setItem('userSession', userJson);
+            
+            // Criar um identificador de sessão persistente
+            localStorage.setItem('supabase_session_token', user.id + '_' + Date.now());
+          }
         }
       } catch (error) {
         console.error('Erro ao verificar usuário:', error);
@@ -67,19 +126,103 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
       }
     };
 
+    // Só executar checkUser na primeira vez que o componente for montado
     checkUser();
+    sessionStorage.setItem('authChecked', 'true');
 
-    // Configurar listener para mudanças na autenticação
+    // Configurar listener para mudanças na autenticação com forte controle de duplicidade
     const { data: authListener } = supabase.auth.onAuthStateChange(
       (event, session) => {
         console.log('Auth state changed:', event);
-        setUser(session?.user || null);
-        setLoading(false);
+        
+        if (event === 'SIGNED_IN') {
+          // Usar nosso token de sessão para verificar se é uma sessão existente
+          const sessionToken = localStorage.getItem('supabase_session_token');
+          
+          // Se já temos um token de sessão para este usuário, ignorar o evento completamente
+          if (sessionToken && session?.user?.id && sessionToken.startsWith(session.user.id)) {
+            console.log('Evento SIGNED_IN ignorado: sessão existente detectada');
+            
+            // Mesmo quando ignoramos o evento, asseguramos que o usuário está definido corretamente
+            if (!user && session?.user) {
+              console.log('Restaurando sessão de usuário após recarregamento da página');
+              setUser(session.user);
+              
+              // Atualizar storages com os dados mais recentes
+              const userJson = JSON.stringify(session.user);
+              localStorage.setItem('userSession', userJson);
+              sessionStorage.setItem('userSession', userJson);
+            }
+            
+            return;
+          }
+          
+          console.log('Novo login detectado (usuário diferente ou primeira sessão)');
+          if (session?.user) {
+            // Atualizar o usuário
+            setUser(session.user);
+            
+            // Atualizar storages
+            const userJson = JSON.stringify(session.user);
+            localStorage.setItem('userSession', userJson); 
+            sessionStorage.setItem('userSession', userJson);
+            
+            // Atualizar o token de sessão
+            localStorage.setItem('supabase_session_token', session.user.id + '_' + Date.now());
+            
+            // Limpar dados de projetos e outras configurações do localStorage
+            // para garantir que os dados sejam sempre recarregados do Supabase ao fazer login
+            console.log('Limpando localStorage para forçar recarga do Supabase');
+            localStorage.removeItem('cachedProjects');
+            localStorage.removeItem('cachedClients');
+            localStorage.removeItem('workshopSettings');
+
+            // Remover qualquer projeto em edição temporária
+            const keysToRemove = [];
+            for (let i = 0; i < localStorage.length; i++) {
+              const key = localStorage.key(i);
+              if (key && key.startsWith('editing_project_')) {
+                keysToRemove.push(key);
+              }
+            }
+            keysToRemove.forEach(key => localStorage.removeItem(key));
+            
+            // Forçar a recarga apenas em novos logins reais
+            localStorage.setItem('forceDataReload', 'true');
+            sessionStorage.setItem('userAuthenticated', 'true');
+          }
+        }
+        else if (event === 'SIGNED_OUT') {
+          console.log('Logout detectado');
+          setUser(null);
+          
+          // Limpar todas as flags de sessão
+          sessionStorage.removeItem('userSession');
+          sessionStorage.removeItem('authChecked');
+          localStorage.removeItem('userSession');
+          localStorage.removeItem('supabase_session_token');
+          localStorage.removeItem('forceDataReload');
+        }
+        else if (event === 'TOKEN_REFRESHED' && session?.user) {
+          // Quando o token for atualizado, sincronizar o usuário
+          console.log('Token atualizado, atualizando dados do usuário');
+          setUser(session.user);
+          
+          // Atualizar storages
+          const userJson = JSON.stringify(session.user);
+          localStorage.setItem('userSession', userJson);
+          sessionStorage.setItem('userSession', userJson);
+        }
+        // Outros eventos são simplesmente ignorados
+        else {
+          console.log('Ignorando evento:', event);
+        }
       }
     );
-
+    
+    // Cleanup
     return () => {
-      authListener?.subscription.unsubscribe();
+      authListener.subscription.unsubscribe();
     };
   }, []);
 

@@ -14,8 +14,6 @@ export const supabase = createClient(supabaseUrl, supabaseKey, {
     detectSessionInUrl: true, // Mantém a detecção de sessão na URL para login inicial
     storage: window.sessionStorage // Usa sessionStorage em vez de localStorage
   },
-  // Desativa logs de debug que podem expor informações sensíveis
-  debug: false,
   // Configurações globais para todas as requisições fetch
   global: {
     headers: {
