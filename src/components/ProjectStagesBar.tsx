@@ -249,6 +249,25 @@ export const ProjectStagesBar: React.FC<ProjectStagesBarProps> = ({
     }
   };
 
+  const openDatePicker = (e: React.MouseEvent<HTMLInputElement>) => {
+    // Verificar se o elemento não está desabilitado antes de chamar showPicker
+    if (!e.currentTarget.disabled) {
+      e.currentTarget.showPicker();
+    }
+  };
+
+  // Função para impedir a digitação direta, permitindo apenas a navegação e a seleção
+  const preventDirectTyping = (e: React.KeyboardEvent<HTMLInputElement>) => {
+    // Permitir teclas de navegação (setas, tab, etc) e teclas de atalho (Ctrl+C, etc)
+    const allowedKeys = ['Tab', 'ArrowLeft', 'ArrowRight', 'ArrowUp', 'ArrowDown', 'Escape'];
+    const isCtrlKey = e.ctrlKey || e.metaKey;
+    
+    // Se não for uma tecla permitida e não for um atalho, prevenir a ação padrão
+    if (!allowedKeys.includes(e.key) && !isCtrlKey) {
+      e.preventDefault();
+    }
+  };
+
   useEffect(() => {
     if (projectId) {
       console.log('ProjectStagesBar useEffect - projectId alterado:', projectId);
@@ -312,7 +331,8 @@ export const ProjectStagesBar: React.FC<ProjectStagesBarProps> = ({
                     value={estimatedCompletionDate}
                     onChange={handleDateChange}
                     className="text-xs border border-gray-300 rounded-md p-1 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    onClick={(e) => e.currentTarget.showPicker()}
+                    onClick={openDatePicker}
+                    onKeyDown={preventDirectTyping}
                   />
                 </div>
                 <button
@@ -422,6 +442,8 @@ export const ProjectStagesBar: React.FC<ProjectStagesBarProps> = ({
                         stage.id === 'instalacao' ? 'focus:ring-green-500' : 'focus:ring-blue-500'
                       }`}
                       disabled={!stageData?.completed || isProjectCanceled}
+                      onClick={openDatePicker}
+                      onKeyDown={preventDirectTyping}
                     />
                     
                     {stage.id === 'instalacao' && stageData?.completed && (
@@ -478,6 +500,8 @@ export const ProjectStagesBar: React.FC<ProjectStagesBarProps> = ({
                     onChange={(e) => handleStageChange('projetoCancelado', 'date', e.target.value)}
                     className={`w-full text-xs border ${isProjectCanceled ? 'border-red-300' : 'border-gray-300'} rounded-md p-1 focus:outline-none focus:ring-1 focus:ring-red-500`}
                     disabled={!stages.projetoCancelado?.completed}
+                    onClick={openDatePicker}
+                    onKeyDown={preventDirectTyping}
                   />
                   
                   {isProjectCanceled && (
@@ -562,6 +586,8 @@ export const ProjectStagesBar: React.FC<ProjectStagesBarProps> = ({
                         stage.id === 'instalacao' ? 'focus:ring-green-500' : 'focus:ring-blue-500'
                       }`}
                       disabled={!stageData?.completed || isProjectCanceled}
+                      onClick={openDatePicker}
+                      onKeyDown={preventDirectTyping}
                     />
                     
                     {stage.id === 'instalacao' && stageData?.completed && (
@@ -654,6 +680,8 @@ export const ProjectStagesBar: React.FC<ProjectStagesBarProps> = ({
                         stage.id === 'instalacao' ? 'focus:ring-green-500' : 'focus:ring-blue-500'
                       }`}
                       disabled={!stageData?.completed || isProjectCanceled}
+                      onClick={openDatePicker}
+                      onKeyDown={preventDirectTyping}
                     />
                     
                     {stage.id === 'instalacao' && stageData?.completed && (
@@ -712,6 +740,8 @@ export const ProjectStagesBar: React.FC<ProjectStagesBarProps> = ({
                     onChange={(e) => handleStageChange('projetoCancelado', 'date', e.target.value)}
                     className={`w-full text-xs border ${isProjectCanceled ? 'border-red-300' : 'border-gray-300'} rounded-md p-1 focus:outline-none focus:ring-1 focus:ring-red-500`}
                     disabled={!stages.projetoCancelado?.completed}
+                    onClick={openDatePicker}
+                    onKeyDown={preventDirectTyping}
                   />
                   
                   {isProjectCanceled && (

@@ -49,7 +49,6 @@ interface MyWorkshopProps {
 export const MyWorkshop: React.FC<MyWorkshopProps> = ({ workshopSettings, onSaveSettings }) => {
   // Estado local para as configurações
   const [settings, setSettings] = useState<WorkshopSettings>(workshopSettings || {
-    workingDaysPerMonth: 22,
     expenses: [],
     workshopName: '',
     logoImage: null
@@ -85,6 +84,19 @@ export const MyWorkshop: React.FC<MyWorkshopProps> = ({ workshopSettings, onSave
     setWorkshopNameInput(workshopSettings?.workshopName || '');
     setLogoPreview(workshopSettings?.logoImage || null);
   }, [workshopSettings]);
+  
+  // Calcular o total mensal de despesas
+  const totalMonthlyExpenses = settings.expenses.reduce(
+    (sum, expense) => sum + (expense.unitValue || 0) * (expense.quantity || 0), 0
+  );
+  
+  // Encontrar a despesa de salário, se existir
+  const salaryExpense = settings.expenses.find(expense => expense.type === 'Salário');
+  
+  // Calcular o salário diário, se existir
+  const dailySalary = salaryExpense 
+    ? (salaryExpense.unitValue * salaryExpense.quantity) / settings.workingDaysPerMonth 
+    : 0;
   
   // Função para adicionar uma nova despesa
   const handleAddExpense = () => {
@@ -128,12 +140,20 @@ export const MyWorkshop: React.FC<MyWorkshopProps> = ({ workshopSettings, onSave
   
   // Função para calcular o custo diário da marcenaria
   const calculateDailyCost = (): number => {
-    const totalMonthlyCost = settings.expenses.reduce(
-      (sum, expense) => sum + (expense.unitValue || 0) * (expense.quantity || 0), 0
+    // Calcular o total mensal excluindo o salário
+    const totalMonthlyWithoutSalary = settings.expenses.reduce(
+      (sum, expense) => {
+        if (expense.type === 'Salário') return sum;
+        return sum + (expense.unitValue || 0) * (expense.quantity || 0);
+      }, 0
     );
-    return settings.workingDaysPerMonth > 0 
-      ? totalMonthlyCost / settings.workingDaysPerMonth 
+    
+    // Adicionar o salário diário multiplicado pelos dias de trabalho gerais
+    const dailyCostWithoutSalary = settings.workingDaysPerMonth > 0 
+      ? totalMonthlyWithoutSalary / settings.workingDaysPerMonth 
       : 0;
+      
+    return dailyCostWithoutSalary + dailySalary;
   };
   
   // Função para calcular o custo por hora (baseado em 8h/dia)
@@ -168,11 +188,6 @@ export const MyWorkshop: React.FC<MyWorkshopProps> = ({ workshopSettings, onSave
       alert('Configurações da marcenaria salvas com sucesso!');
     }, 1500);
   };
-  
-  // Cálculo do total mensal de despesas
-  const totalMonthlyExpenses = settings.expenses.reduce(
-    (sum, expense) => sum + (expense.unitValue || 0) * (expense.quantity || 0), 0
-  );
   
   // Função para atualizar os dias de trabalho por mês
   const handleWorkingDaysChange = (value: string) => {
@@ -289,6 +304,18 @@ export const MyWorkshop: React.FC<MyWorkshopProps> = ({ workshopSettings, onSave
                 <span className="ml-2 text-xs text-gray-500">/dia</span>
               </div>
             </div>
+            
+            {salaryExpense && (
+              <div className="pt-3 border-t border-blue-100">
+                <p className="text-sm font-medium text-gray-600">Salário Diário</p>
+                <div className="flex items-baseline">
+                  <span className="text-2xl font-bold text-amber-600">
+                    R$ {dailySalary.toFixed(2)}
+                  </span>
+                  <span className="ml-2 text-xs text-gray-500">/dia</span>
+                </div>
+              </div>
+            )}
             
             <div className="pt-3 border-t border-blue-100">
               <p className="text-sm font-medium text-gray-600">Valor Hora (8h/dia)</p>

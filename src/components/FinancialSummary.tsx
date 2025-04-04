@@ -2,7 +2,7 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { Project, WorkshopSettings } from '../types';
 import { 
   BarChart, Bar, XAxis, YAxis, CartesianGrid, Tooltip, Legend, ResponsiveContainer,
-  PieChart, Pie, Cell, LineChart, Line
+  PieChart, Pie, Cell, LineChart, Line, ReferenceLine
 } from 'recharts';
 import { DollarSign, TrendingUp, Calendar, BarChart3, ChevronDown } from 'lucide-react';
 
@@ -105,16 +105,29 @@ export function FinancialSummary({ projects, workshopSettings, onBack, onDeleteP
 
   // Dados para o gráfico de receita mensal
   const monthlyRevenueData = useMemo(() => {
-    // Inicializar todos os meses do ano selecionado com valor zero
-    const allMonths: Record<string, number> = {};
+    // Inicializar todos os meses do ano selecionado com valores zero para cada componente
+    const allMonths: Record<string, { 
+      fixedExpenses: number, 
+      variableExpenses: number, 
+      materials: number, 
+      profit: number,
+      projects: Array<{ id: string, name: string, revenue: number }> // Lista de projetos do mês
+    }> = {};
+    
     const monthNames = [
       'Jan', 'Fev', 'Mar', 'Abr', 'Mai', 'Jun', 
       'Jul', 'Ago', 'Set', 'Out', 'Nov', 'Dez'
     ];
     
     // Preencher com todos os meses do ano selecionado
-    monthNames.forEach((name, index) => {
-      allMonths[name] = 0;
+    monthNames.forEach((name) => {
+      allMonths[name] = { 
+        fixedExpenses: 0, 
+        variableExpenses: 0, 
+        materials: 0, 
+        profit: 0,
+        projects: [] 
+      };
     });
     
     console.log("Calculando dados de faturamento mensal para", completedProjects.length, "projetos no ano", selectedYear);
@@ -139,10 +152,67 @@ export function FinancialSummary({ projects, workshopSettings, onBack, onDeleteP
           const monthName = monthNames[monthIndex];
           
           // Usar o preço correto com base no tipo de preço definido em cada projeto
-          const price = getProjectPrice(project);
+          const totalRevenue = getProjectPrice(project);
           
-          console.log(`Adicionando R$ ${price} ao mês ${monthName} para o projeto ${project.name}`);
-          allMonths[monthName] += price;
+          // Calcular os componentes de custo
+          let fixedExpenses = 0;
+          
+          // Se o projeto tem um custo diário congelado (após aprovação do projeto técnico)
+          if (project.frozenDailyCost && project.fixedExpenseDays) {
+            fixedExpenses = project.frozenDailyCost * project.fixedExpenseDays;
+          } 
+          // Se não tem custo congelado, mas tem dias de trabalho definidos
+          else if (project.fixedExpenseDays) {
+            // Calcular com base nas despesas individuais
+            const dailyCost = project.fixedExpenses?.reduce((sum, expense) => {
+              return sum + (expense.total || 0);
+            }, 0) || 0;
+            
+            fixedExpenses = dailyCost * project.fixedExpenseDays;
+          } 
+          // Se não tem dias definidos, usar o total direto das despesas
+          else {
+            fixedExpenses = project.totalFixedExpenses || 
+              (project.fixedExpenses?.reduce((sum, expense) => sum + (expense.total || 0), 0) || 0);
+          }
+          
+          const variableExpenses = project.totalVariableExpenses || 
+            (project.variableExpenses?.reduce((sum, expense) => sum + (expense.total || 0), 0) || 0);
+          
+          const materials = project.totalMaterialCost || 
+            (project.materials?.reduce((sum, material) => {
+              const quantity = typeof material.quantity === 'string' 
+                ? (material.quantity === '' ? 0 : parseFloat(material.quantity)) 
+                : (material.quantity || 0);
+              const unitValue = typeof material.unitValue === 'string'
+                ? (material.unitValue === '' ? 0 : parseFloat(material.unitValue))
+                : (material.unitValue || 0);
+              return sum + (quantity * unitValue);
+            }, 0) || 0);
+          
+          // Calcular o lucro (receita total - todos os custos)
+          const totalCosts = fixedExpenses + variableExpenses + materials;
+          const profit = totalRevenue - totalCosts;
+          
+          console.log(`Projeto ${project.name || 'sem nome'} no mês ${monthName}:`);
+          console.log(`  - Faturamento: R$ ${totalRevenue.toFixed(2)}`);
+          console.log(`  - Despesas Fixas: R$ ${fixedExpenses.toFixed(2)}`);
+          console.log(`  - Despesas Variáveis: R$ ${variableExpenses.toFixed(2)}`);
+          console.log(`  - Materiais: R$ ${materials.toFixed(2)}`);
+          console.log(`  - Lucro: R$ ${profit.toFixed(2)}`);
+          
+          // Adicionar aos totais do mês
+          allMonths[monthName].fixedExpenses += fixedExpenses;
+          allMonths[monthName].variableExpenses += variableExpenses;
+          allMonths[monthName].materials += materials;
+          allMonths[monthName].profit += profit;
+          
+          // Adicionar o projeto à lista de projetos do mês
+          allMonths[monthName].projects.push({
+            id: project.id,
+            name: project.name || 'Projeto sem nome',
+            revenue: totalRevenue
+          });
         }
       }
     });
@@ -150,7 +220,11 @@ export function FinancialSummary({ projects, workshopSettings, onBack, onDeleteP
     // Convertendo para array mantendo a ordem dos meses
     const result = monthNames.map(month => ({ 
       month, 
-      value: allMonths[month] 
+      fixedExpenses: allMonths[month].fixedExpenses,
+      variableExpenses: allMonths[month].variableExpenses,
+      materials: allMonths[month].materials,
+      profit: allMonths[month].profit,
+      projects: allMonths[month].projects
     }));
       
     console.log("Dados de faturamento mensal gerados:", result);
@@ -246,6 +320,18 @@ export function FinancialSummary({ projects, workshopSettings, onBack, onDeleteP
     return result;
   }, [completedProjects, selectedYear]);
 
+  // Calcular a margem de lucro média geral para o ano selecionado
+  const averageProfitMargin = useMemo(() => {
+    // Filtrar apenas os meses que têm projetos
+    const monthsWithProjects = averageProfitData.filter(data => data.value > 0);
+    
+    if (monthsWithProjects.length === 0) return 0;
+    
+    // Calcular a média das margens mensais
+    const sum = monthsWithProjects.reduce((acc, data) => acc + data.value, 0);
+    return sum / monthsWithProjects.length;
+  }, [averageProfitData]);
+
   // Cores para os gráficos
   const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#8884d8'];
 
@@ -310,7 +396,37 @@ export function FinancialSummary({ projects, workshopSettings, onBack, onDeleteP
   return (
     <div className="bg-white rounded-lg shadow-md p-4 sm:p-6">
       <div className="mb-6">
-        <h2 className="text-2xl font-bold text-gray-800 mb-4">Resumo Financeiro</h2>
+        <div className="flex justify-between items-center mb-2">
+          <h2 className="text-2xl font-bold text-gray-800">Resumo Financeiro</h2>
+          
+          {/* Filtro de ano */}
+          <div className="relative">
+            <button 
+              className="flex items-center px-3 py-2 bg-blue-50 border border-blue-100 rounded-md text-blue-700"
+              onClick={() => setShowYearDropdown(!showYearDropdown)}
+            >
+              <span>{selectedYear}</span>
+              <ChevronDown size={16} className="ml-2" />
+            </button>
+            
+            {showYearDropdown && (
+              <div className="absolute top-full right-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-10">
+                {availableYears.map(year => (
+                  <button
+                    key={year}
+                    className={`block w-full text-left px-4 py-2 hover:bg-gray-100 ${selectedYear === year ? 'bg-blue-50 text-blue-700' : ''}`}
+                    onClick={() => {
+                      setSelectedYear(year);
+                      setShowYearDropdown(false);
+                    }}
+                  >
+                    {year}
+                  </button>
+                ))}
+              </div>
+            )}
+          </div>
+        </div>
         <p className="text-gray-600">
           Visualize o desempenho financeiro da sua marcenaria com base nos projetos concluídos.
         </p>
@@ -318,6 +434,29 @@ export function FinancialSummary({ projects, workshopSettings, onBack, onDeleteP
 
       {/* Cards de estatísticas */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+        <div className="bg-indigo-50 rounded-lg p-4 border border-indigo-100">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center">
+              <div className="bg-indigo-500 rounded-full p-2 mr-3">
+                <DollarSign size={20} className="text-white" />
+              </div>
+              <div>
+                <p className="text-sm text-indigo-700">Faturamento Médio Mensal</p>
+                <p className="text-xl text-indigo-900">
+                  {monthlyAverageRevenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                </p>
+              </div>
+            </div>
+            <div className="mt-1">
+              <p className="text-xs text-indigo-600 text-center sm:text-left">
+                {selectedYear === new Date().getFullYear() ? 
+                  `Média: ${new Date().getMonth() + 1} ${window.innerWidth < 640 ? 'meses' : 'meses decorridos'}` : 
+                  'Média: anual (12 meses)'}
+              </p>
+            </div>
+          </div>
+        </div>
+        
         <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center">
@@ -326,7 +465,7 @@ export function FinancialSummary({ projects, workshopSettings, onBack, onDeleteP
               </div>
               <div>
                 <p className="text-sm text-blue-700">Faturamento {showAnnualRevenue ? `${selectedYear}` : 'Total'}</p>
-                <p className="text-xl font-bold text-blue-900">
+                <p className="text-xl text-blue-900">
                   {(showAnnualRevenue ? annualRevenue : totalRevenue).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                 </p>
               </div>
@@ -342,29 +481,6 @@ export function FinancialSummary({ projects, workshopSettings, onBack, onDeleteP
           </div>
         </div>
         
-        <div className="bg-indigo-50 rounded-lg p-4 border border-indigo-100">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center">
-              <div className="bg-indigo-500 rounded-full p-2 mr-3">
-                <DollarSign size={20} className="text-white" />
-              </div>
-              <div>
-                <p className="text-sm text-indigo-700">Faturamento Médio Mensal</p>
-                <p className="text-xl font-bold text-indigo-900">
-                  {monthlyAverageRevenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                </p>
-              </div>
-            </div>
-            <div className="mt-1">
-              <p className="text-xs text-indigo-600 text-center sm:text-left">
-                {selectedYear === new Date().getFullYear() ? 
-                  `Média: ${new Date().getMonth() + 1} ${window.innerWidth < 640 ? 'meses' : 'meses decorridos'}` : 
-                  'Média: anual (12 meses)'}
-              </p>
-            </div>
-          </div>
-        </div>
-        
         <div className="bg-green-50 rounded-lg p-4 border border-green-100">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center">
@@ -373,7 +489,7 @@ export function FinancialSummary({ projects, workshopSettings, onBack, onDeleteP
               </div>
               <div>
                 <p className="text-sm text-green-700">Projetos {showAnnualRevenue ? `${selectedYear}` : 'Total'}</p>
-                <p className="text-xl font-bold text-green-900">{showAnnualRevenue ? annualProjects : totalProjects}</p>
+                <p className="text-xl text-green-900">{showAnnualRevenue ? annualProjects : totalProjects}</p>
               </div>
             </div>
           </div>
@@ -387,7 +503,7 @@ export function FinancialSummary({ projects, workshopSettings, onBack, onDeleteP
               </div>
               <div>
                 <p className="text-sm text-purple-700">Ticket Médio {showAnnualRevenue ? `${selectedYear}` : 'Total'}</p>
-                <p className="text-xl font-bold text-purple-900">
+                <p className="text-xl text-purple-900">
                   {(showAnnualRevenue ? annualAverageTicket : averageTicket).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                 </p>
               </div>
@@ -410,34 +526,6 @@ export function FinancialSummary({ projects, workshopSettings, onBack, onDeleteP
           <div className="mb-8">
             <div className="flex justify-between items-center mb-4">
               <h3 className="text-lg font-semibold text-gray-800">Faturamento Mensal</h3>
-              
-              {/* Filtro de ano */}
-              <div className="relative">
-                <button 
-                  className="flex items-center px-3 py-2 bg-blue-50 border border-blue-100 rounded-md text-blue-700"
-                  onClick={() => setShowYearDropdown(!showYearDropdown)}
-                >
-                  <span>{selectedYear}</span>
-                  <ChevronDown size={16} className="ml-2" />
-                </button>
-                
-                {showYearDropdown && (
-                  <div className="absolute top-full right-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-10">
-                    {availableYears.map(year => (
-                      <button
-                        key={year}
-                        className={`block w-full text-left px-4 py-2 hover:bg-gray-100 ${selectedYear === year ? 'bg-blue-50 text-blue-700' : ''}`}
-                        onClick={() => {
-                          setSelectedYear(year);
-                          setShowYearDropdown(false);
-                        }}
-                      >
-                        {year}
-                      </button>
-                    ))}
-                  </div>
-                )}
-              </div>
             </div>
             
             <div className="bg-white border border-gray-200 rounded-lg p-4 h-72">
@@ -468,22 +556,110 @@ export function FinancialSummary({ projects, workshopSettings, onBack, onDeleteP
                     width={window.innerWidth < 640 ? 60 : 80}
                   />
                   <Tooltip 
-                    formatter={(value: number) => [
-                      value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }),
-                      'Faturamento'
-                    ]}
+                    formatter={(value: number, name: string) => {
+                      const label = 
+                        name === 'fixedExpenses' ? 'Despesas Fixas' :
+                        name === 'variableExpenses' ? 'Despesas Variáveis' :
+                        name === 'materials' ? 'Materiais' : 'Lucro';
+                      return [value.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' }), label];
+                    }}
                     labelFormatter={(label) => `Mês: ${label}`}
+                    content={({ active, payload, label }) => {
+                      if (active && payload && payload.length) {
+                        // Calcular o faturamento total somando todos os componentes
+                        const totalRevenue = payload.reduce((sum, entry) => sum + (entry.value as number), 0);
+                        
+                        // Obter a lista de projetos do mês
+                        const monthData = monthlyRevenueData.find(data => data.month === label);
+                        const monthProjects = monthData?.projects || [];
+                        
+                        return (
+                          <div className="bg-white p-2 border border-gray-200 shadow-md rounded-md">
+                            <p className="font-medium text-gray-800 mb-1">Mês: {label}</p>
+                            <p className="text-gray-900 border-b border-gray-200 pb-1 mb-1">
+                              Faturamento Total: {totalRevenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                            </p>
+                            {payload.map((entry, index) => (
+                              <div key={index} className="flex justify-between items-center my-1">
+                                <div className="flex items-center">
+                                  <div 
+                                    style={{ 
+                                      backgroundColor: entry.color, 
+                                      width: '10px', 
+                                      height: '10px',
+                                      marginRight: '5px',
+                                      borderRadius: '2px'
+                                    }} 
+                                  />
+                                  <span className="text-sm text-gray-700">
+                                    {entry.name === 'fixedExpenses' ? 'Despesas Fixas' :
+                                     entry.name === 'variableExpenses' ? 'Despesas Variáveis' :
+                                     entry.name === 'materials' ? 'Materiais' : 'Lucro'}:
+                                  </span>
+                                </div>
+                                <span className="text-sm text-gray-900 ml-2">
+                                  {(entry.value as number).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                </span>
+                              </div>
+                            ))}
+                            
+                            {/* Lista de projetos do mês */}
+                            {monthProjects.length > 0 && (
+                              <div className="mt-2 pt-1 border-t border-gray-200">
+                                <p className="text-xs font-medium text-gray-700 mb-1">Projetos finalizados ({monthProjects.length}):</p>
+                                <div className="max-h-32 overflow-y-auto">
+                                  {monthProjects.map((project, index) => (
+                                    <div key={index} className="flex justify-between items-center text-xs py-1">
+                                      <span className="text-gray-600 truncate" style={{ maxWidth: '150px' }}>
+                                        {project.name}
+                                      </span>
+                                      <span className="text-amber-600 ml-2">
+                                        {project.revenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                                      </span>
+                                    </div>
+                                  ))}
+                                </div>
+                              </div>
+                            )}
+                          </div>
+                        );
+                      }
+                      return null;
+                    }}
                   />
                   <Legend 
                     wrapperStyle={{ fontSize: window.innerWidth < 640 ? 10 : 12 }}
                     verticalAlign="bottom"
                     height={window.innerWidth < 640 ? 20 : 36}
+                    formatter={(value) => {
+                      return value === 'fixedExpenses' ? 'Despesas Fixas' :
+                             value === 'variableExpenses' ? 'Despesas Variáveis' :
+                             value === 'materials' ? 'Materiais' : 'Lucro';
+                    }}
                   />
                   <Bar 
-                    dataKey="value" 
-                    name="Faturamento" 
+                    dataKey="fixedExpenses" 
+                    stackId="a" 
+                    name="fixedExpenses" 
+                    fill="#ef4444" 
+                  />
+                  <Bar 
+                    dataKey="variableExpenses" 
+                    stackId="a" 
+                    name="variableExpenses" 
+                    fill="#f97316" 
+                  />
+                  <Bar 
+                    dataKey="materials" 
+                    stackId="a" 
+                    name="materials" 
                     fill="#3b82f6" 
-                    radius={[4, 4, 0, 0]}
+                  />
+                  <Bar 
+                    dataKey="profit" 
+                    stackId="a" 
+                    name="profit" 
+                    fill="#22c55e" 
                   />
                 </BarChart>
               </ResponsiveContainer>
@@ -553,7 +729,12 @@ export function FinancialSummary({ projects, workshopSettings, onBack, onDeleteP
 
             {/* Gráfico de margem de lucro média */}
             <div>
-              <h3 className="text-lg font-semibold text-gray-800 mb-4">Margem de Lucro Média</h3>
+              <h3 className="text-lg font-semibold text-gray-800 mb-4">
+                Margem de Lucro Média
+                <span className="text-sm font-normal text-amber-600 ml-2">
+                  ({averageProfitMargin.toFixed(2)}%)
+                </span>
+              </h3>
               <div className="bg-white border border-gray-200 rounded-lg p-4 h-80">
                 <ResponsiveContainer width="100%" height="100%">
                   <LineChart 
@@ -581,6 +762,19 @@ export function FinancialSummary({ projects, workshopSettings, onBack, onDeleteP
                       wrapperStyle={{ fontSize: 10 }}
                       verticalAlign="bottom"
                       height={20}
+                    />
+                    {/* Linha de referência para a média geral */}
+                    <ReferenceLine 
+                      y={averageProfitMargin} 
+                      stroke="#FF8042" 
+                      strokeDasharray="3 3"
+                      strokeWidth={1.5}
+                      label={{ 
+                        value: `Média: ${averageProfitMargin.toFixed(2)}%`,
+                        position: 'insideBottomRight',
+                        fill: '#FF8042',
+                        fontSize: 10
+                      }}
                     />
                     <Line 
                       type="monotone" 

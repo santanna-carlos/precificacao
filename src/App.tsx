@@ -1,7 +1,7 @@
 import React, { useState, useEffect, useRef, useMemo, useCallback } from 'react';
 import { 
   Calculator, Menu, X, Save, Copy, 
-  Plus, AlertCircle, Search, Check, XCircle, Loader2
+  Plus, AlertCircle, Search, Check, XCircle, Loader2, Trash2
 } from 'lucide-react';
 import { ExpenseSection } from './components/ExpenseSection';
 import { Summary } from './components/Summary';
@@ -875,6 +875,18 @@ function App() {
     );
   };
 
+  const handleClearAllExpenses = () => {
+    const confirmClear = window.confirm(
+      "Tem certeza que deseja excluir TODAS as despesas deste projeto? Esta ação não pode ser desfeita."
+    );
+    
+    if (confirmClear) {
+      setFixedExpenses([]);
+      setVariableExpenses([]);
+      setMaterials([]);
+    }
+  };
+
   const [workshopSettings, setWorkshopSettings] = useState<WorkshopSettings>({
     workingDaysPerMonth: 22,
     workshopName: '', 
@@ -1226,6 +1238,12 @@ function App() {
     const currentDate = new Date();
     const formattedDate = currentDate.toISOString().split('T')[0];
     
+    // Calcular o salário diário a partir das configurações da marcenaria
+    const salaryExpense = workshopSettings?.expenses?.find(expense => expense.type === 'Salário');
+    const dailySalaryValue = salaryExpense 
+      ? (salaryExpense.unitValue * salaryExpense.quantity) / workshopSettings.workingDaysPerMonth 
+      : 0;
+    
     const newProject: Project = {
       id: '',
       name: '',
@@ -1257,7 +1275,8 @@ function App() {
       useWorkshopForFixedExpenses: true,
       frozenDailyCost: undefined,
       priceType: 'normal',
-      estimatedCompletionDate: null
+      estimatedCompletionDate: null,
+      dailySalary: dailySalaryValue // Adicionar o valor do salário diário
     };
 
     try {
@@ -1692,6 +1711,27 @@ function App() {
       setWorkshopSettings(localSettings);
       console.log('Configurações da marcenaria salvas localmente');
       
+      // Calcular o novo valor do salário diário
+      const salaryExpense = settings.expenses.find(expense => expense.type === 'Salário');
+      const newDailySalary = salaryExpense 
+        ? (salaryExpense.unitValue * salaryExpense.quantity) / settings.workingDaysPerMonth 
+        : 0;
+      
+      // Atualizar o valor do salário diário em todos os projetos que usam cálculo automático
+      const updatedProjects = projects.map(project => {
+        if (project.useWorkshopForFixedExpenses) {
+          return {
+            ...project,
+            dailySalary: newDailySalary
+          };
+        }
+        return project;
+      });
+      
+      // Atualizar os projetos localmente
+      setProjects(updatedProjects);
+      localStorage.setItem('projects', JSON.stringify(updatedProjects));
+      
       // Tentar salvar no Supabase
       const { data, error } = await saveWorkshopSettings(settings);
       if (error) {
@@ -1700,6 +1740,17 @@ function App() {
         setWorkshopSettings(data);
         localStorage.setItem('workshopSettings', JSON.stringify(data));
         console.log('Configurações da marcenaria atualizadas no Supabase');
+      }
+      
+      // Atualizar os projetos no Supabase
+      for (const project of updatedProjects) {
+        if (project.useWorkshopForFixedExpenses) {
+          try {
+            await updateProject(project);
+          } catch (error) {
+            console.error(`Erro ao atualizar o salário diário no projeto ${project.id}:`, error);
+          }
+        }
       }
     } catch (error) {
       console.error('Erro ao salvar configurações da marcenaria:', error);
@@ -2075,12 +2126,6 @@ function App() {
                     <div className="flex flex-col">
                       <h1 className="text-2xl font-bold hidden sm:inline">Gestão de Processos e Precificação Inteligente para Marceneiros</h1>
                       <h1 className="text-lg font-bold sm:hidden">Gestão e Precificação</h1>
-                      {hasUnsavedChanges && activeProjectId && (
-                        <div className="text-xs sm:text-sm text-amber-200 flex items-center animate-pulse transition-opacity duration-1000">
-                          <AlertCircle size={14} />
-                          <span>&nbsp;Alterações não salvas</span>
-                        </div>
-                      )}
                     </div>
                   </div>
                 </div>
@@ -2171,6 +2216,12 @@ function App() {
                         <Copy size={20} />
                         <span className="hidden sm:inline">Duplicar</span>
                       </button>
+                      {hasUnsavedChanges && activeProjectId && (
+                        <div className="flex items-center text-amber-200 animate-pulse transition-opacity duration-1000 bg-blue-800 px-3 py-1 h-9 rounded-md">
+                          <AlertCircle size={16} className="mr-1" />
+                          <span className="text-xs sm:text-sm">Alterações não salvas</span>
+                        </div>
+                      )}
                     </div>
                   </div>
                 )}
@@ -2311,6 +2362,20 @@ function App() {
                         }
                         disabled={projectStages.projetoTecnico?.completed}
                       />
+
+                      {/* Botão para limpar todas as despesas */}
+                      {!projectStages.projetoTecnico?.completed && (
+                        <div className="flex justify-center sm:justify-end mb-4">
+                          <button
+                            className="flex items-center justify-center gap-2 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors w-full sm:w-auto"
+                            onClick={handleClearAllExpenses}
+                            title="Excluir todas as despesas"
+                          >
+                            <Trash2 size={18} />
+                            <span>Excluir todas as despesas</span>
+                          </button>
+                        </div>
+                      )}
 
                       <div className="bg-white rounded-lg shadow-md p-4 sm:p-6">
                         <h2 className="text-lg sm:text-xl font-semibold text-gray-800 mb-3 sm:mb-4 flex items-center gap-2">

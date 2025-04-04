@@ -62,6 +62,7 @@ export interface Project {
   frozenDailyCost?: number; // Valor congelado do custo diário quando o projeto técnico for aprovado
   priceType?: 'normal' | 'markup'; // Tipo de preço selecionado (normal ou com markup)
   estimatedCompletionDate?: string; // Data prevista para finalização do projeto
+  dailySalary?: number; // Valor do salário diário específico do projeto
 }
 
 export interface ProjectSummary {
@@ -83,6 +84,7 @@ export interface WorkshopExpense {
   unitValue: number;
   isCustomDescription?: boolean;
   note?: string;
+  workingDays?: number; // Dias de trabalho específicos para o salário
 }
 
 export interface WorkshopSettings {
