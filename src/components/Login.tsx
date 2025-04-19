@@ -65,18 +65,21 @@ export function Login() {
   };
 
   return (
-    <div className="min-h-screen flex flex-col items-center justify-between bg-gradient-to-b from-gray-800 to-gray-900 p-4 py-6">
+    <div className="min-h-screen flex flex-col items-center justify-between bg-white p-4 py-6">
       {/* Conteúdo principal centralizado */}
       <div className="flex-1 flex flex-col items-center justify-center w-full">
-        <div className="bg-white rounded-lg shadow-xl p-6 w-full max-w-md">
+        <div className="bg-[#506D67] rounded-lg shadow-xl p-6 w-full max-w-md">
           <div className="text-center mb-8">
             <div className="flex flex-col items-center">
-              <h1 className="text-3xl font-bold mb-2 relative">
-                <span className="bg-gradient-to-r from-blue-600 via-blue-500 to-blue-400 bg-clip-text text-transparent">
-                  Marcenaria Pro
-                </span>
-              </h1>
-              <span className="text-gray-600 text-sm mt-2">Gestão e Precificação para Marceneiros</span>
+              {/* Substituindo o texto por uma imagem responsiva */}
+              <div className="mb-2">
+                <img 
+                  src="/imagens/banner2.png" 
+                  alt="Logo Offi" 
+                  className="w-45 sm:w-45 md:w-80 h-auto" // Responsivo: tamanhos diferentes para diferentes breakpoints
+                />
+              </div>
+              <span className="text-[#FFFFFF] text-sm mt-2">Gestão e Precificação para Marceneiros</span>
             </div>
           </div>
           
@@ -90,7 +93,7 @@ export function Login() {
           {!showResetPassword ? (
             <form onSubmit={handleLogin} className="space-y-4">
               <div>
-                <label htmlFor="email" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="email" className="block text-sm font-medium text-[#FFFFFF] mb-1">
                   E-mail
                 </label>
                 <div className="relative">
@@ -102,14 +105,14 @@ export function Login() {
                     type="email"
                     value={email}
                     onChange={(e) => setEmail(e.target.value)}
-                    className="pl-10 w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    className="pl-10 w-full p-2 border border-gray-300 rounded-md focus:ring-[#FF8800] focus:border-[#FF8800]"
                     placeholder="seu@email.com"
                   />
                 </div>
               </div>
               
               <div>
-                <label htmlFor="password" className="block text-sm font-medium text-gray-700 mb-1">
+                <label htmlFor="password" className="block text-sm font-medium text-[#FFFFFF] mb-1">
                   Senha
                 </label>
                 <div className="relative">
@@ -121,7 +124,7 @@ export function Login() {
                     type="password"
                     value={password}
                     onChange={(e) => setPassword(e.target.value)}
-                    className="pl-10 w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                    className="pl-10 w-full p-2 border border-gray-300 rounded-md focus:ring-[#FF8800] focus:border-[#FF8800]"
                     placeholder="••••••••"
                   />
                 </div>
@@ -130,33 +133,39 @@ export function Login() {
               <button
                 type="submit"
                 disabled={loading}
-                className={`w-full flex items-center justify-center py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
+                className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#FF8800] hover:bg-[#e67a00] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#FF8800] ${
                   loading ? 'opacity-70 cursor-not-allowed' : ''
                 }`}
               >
                 {loading ? (
-                  'Entrando...'
+                  <span className="flex items-center justify-center">
+                    <svg className="animate-spin -ml-1 mr-2 h-4 w-4 text-white" xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24">
+                      <circle className="opacity-25" cx="12" cy="12" r="10" stroke="currentColor" strokeWidth="4"></circle>
+                      <path className="opacity-75" fill="currentColor" d="M4 12a8 8 0 018-8V0C5.373 0 0 5.373 0 12h4zm2 5.291A7.962 7.962 0 014 12H0c0 3.042 1.135 5.824 3 7.938l3-2.647z"></path>
+                    </svg>
+                    Entrando...
+                  </span>
                 ) : (
-                  <>
+                  <span className="flex items-center justify-center">
                     <LogIn size={18} className="mr-2" />
                     Entrar
-                  </>
+                  </span>
                 )}
               </button>
               
-              <div className="text-center mt-4">
+              <div className="text-center">
                 <button
                   type="button"
                   onClick={() => setShowResetPassword(true)}
-                  className="text-sm text-blue-600 hover:text-blue-800"
+                  className="text-[#FFFFFF] hover:underline text-sm"
                 >
                   Esqueceu sua senha?
                 </button>
               </div>
               <div className="text-center mt-2">
-                <p className="text-sm text-gray-600">
+                <p className="text-sm text-[#FFFFFF]">
                   Não tem uma conta?{' '}
-                  <Link to="/signup" className="text-blue-600 hover:text-blue-800">
+                  <Link to="/signup" className="text-[#FF8800] hover:underline">
                     Cadastre-se
                   </Link>
                 </p>
@@ -178,7 +187,7 @@ export function Login() {
                       setShowResetPassword(false);
                       setResetSent(false);
                     }}
-                    className="mt-4 text-blue-600 hover:text-blue-800"
+                    className="mt-4 text-[#FF8800] hover:underline"
                   >
                     Voltar para o login
                   </button>
@@ -186,15 +195,15 @@ export function Login() {
               ) : (
                 <>
                   <div className="text-center mb-4">
-                    <h2 className="text-xl font-semibold text-gray-800">Redefinir Senha</h2>
-                    <p className="text-gray-600 mt-1">
+                    <h2 className="text-xl font-semibold text-[#FFFFFF]">Redefinir Senha</h2>
+                    <p className="text-[#FFFFFF] mt-1">
                       Informe seu e-mail para receber instruções de redefinição de senha.
                     </p>
                   </div>
                   
                   <form onSubmit={handleResetPassword} className="space-y-4">
                     <div>
-                      <label htmlFor="reset-email" className="block text-sm font-medium text-gray-700 mb-1">
+                      <label htmlFor="reset-email" className="block text-sm font-medium text-[#FFFFFF] mb-1">
                         E-mail
                       </label>
                       <div className="relative">
@@ -206,7 +215,7 @@ export function Login() {
                           type="email"
                           value={email}
                           onChange={(e) => setEmail(e.target.value)}
-                          className="pl-10 w-full p-2 border border-gray-300 rounded-md focus:ring-blue-500 focus:border-blue-500"
+                          className="pl-10 w-full p-2 border border-gray-300 rounded-md focus:ring-[#FF8800] focus:border-[#FF8800]"
                           placeholder="seu@email.com"
                         />
                       </div>
@@ -215,7 +224,7 @@ export function Login() {
                     <button
                       type="submit"
                       disabled={loading}
-                      className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-blue-600 hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 ${
+                      className={`w-full py-2 px-4 border border-transparent rounded-md shadow-sm text-sm font-medium text-white bg-[#FF8800] hover:bg-[#e67a00] focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-[#FF8800] ${
                         loading ? 'opacity-70 cursor-not-allowed' : ''
                       }`}
                     >
@@ -225,7 +234,7 @@ export function Login() {
                     <button
                       type="button"
                       onClick={() => setShowResetPassword(false)}
-                      className="w-full mt-2 text-center text-sm text-blue-600 hover:text-blue-800"
+                      className="w-full mt-2 text-center text-sm text-white hover:underline"
                     >
                       Voltar para o login
                     </button>
@@ -237,7 +246,7 @@ export function Login() {
         </div>
         
         {/* Texto de crédito abaixo da caixa branca */}
-        <div className="text-gray-400 text-sm mt-4 text-center">
+        <div className="text-gray-600 text-sm mt-4 text-center">
           Desenvolvido por José Carlos Sant'Anna
         </div>
       </div>
