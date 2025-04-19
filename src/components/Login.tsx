@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
 import { LogIn, Mail, Lock, AlertCircle } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
+import { Link } from 'react-router-dom';
 
 export function Login() {
   const { signIn, resetPassword } = useAuth();
@@ -151,6 +152,14 @@ export function Login() {
                 >
                   Esqueceu sua senha?
                 </button>
+              </div>
+              <div className="text-center mt-2">
+                <p className="text-sm text-gray-600">
+                  Não tem uma conta?{' '}
+                  <Link to="/signup" className="text-blue-600 hover:text-blue-800">
+                    Cadastre-se
+                  </Link>
+                </p>
               </div>
             </form>
           ) : (

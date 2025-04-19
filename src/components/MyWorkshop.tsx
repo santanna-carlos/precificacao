@@ -375,7 +375,7 @@ export const MyWorkshop: React.FC<MyWorkshopProps> = ({ workshopSettings, onSave
             <div className="flex items-start">
               <div className="flex-shrink-0 h-8 w-8 rounded-full bg-blue-100 flex items-center justify-center mr-3">
                 <svg xmlns="http://www.w3.org/2000/svg" className="h-5 w-5 text-blue-600" viewBox="0 0 20 20" fill="currentColor">
-                  <path fillRule="evenodd" d="M3 5a2 2 0 012-2h10a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V5zm11 1H6v8l4-2 4 2V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                  <path fillRule="evenodd" d="M3 5a2 2 0 012-2h10a2 2 0 012 2v10a2 2 0 01-2 2H5a2 2 0 01-2-2V5zm11 1H6v8l4-2 4 2V6a1 1 0 00-1-1z" />
                 </svg>
               </div>
               <div>
@@ -555,11 +555,14 @@ export const MyWorkshop: React.FC<MyWorkshopProps> = ({ workshopSettings, onSave
                           }}
                           onChange={(e) => {
                             const value = e.target.value;
-                            // Permite apenas dígitos e um ponto decimal
-                            const numericValue = value.replace(/[^\d.]/g, '');
+                            // Permite dígitos, ponto ou vírgula como separador decimal
+                            const numericValue = value.replace(/[^\d.,]/g, '');
+                            
+                            // Substitui vírgula por ponto para processamento
+                            const normalizedValue = numericValue.replace(',', '.');
                             
                             // Garante que haja apenas um ponto decimal
-                            const parts = numericValue.split('.');
+                            const parts = normalizedValue.split('.');
                             let formattedValue = parts[0];
                             
                             // Remove zeros à esquerda, exceto se for um número decimal como 0.xx

@@ -3,6 +3,7 @@ import {
   Calculator, Menu, X, Save, Copy, 
   Plus, AlertCircle, Search, Check, XCircle, Loader2, Trash2
 } from 'lucide-react';
+import { Routes, Route, Navigate } from 'react-router-dom';
 import { ExpenseSection } from './components/ExpenseSection';
 import { Summary } from './components/Summary';
 import { Sidebar } from './components/Sidebar';
@@ -15,10 +16,12 @@ import { FinancialSummary } from './components/FinancialSummary';
 import { UserProfile } from './components/UserProfile';
 import { useAuth } from './contexts/AuthContext';
 import { Login } from './components/Login';
+import { Signup } from './components/Signup'; // Importar o componente Signup
 import { getProjects, createProject, updateProject, deleteProject, getProject } from './services/projectService';
 import { getClients, createClient, updateClient, deleteClient } from './services/clientService';
 import { getWorkshopSettings, saveWorkshopSettings } from './services/workshopService';
 import { supabase } from './supabase';
+import { SpeedInsights } from "@vercel/speed-insights/next"
 
 const ClientTrackingView = () => {
   const [project, setProject] = useState<Project | null>(null);
@@ -1219,13 +1222,27 @@ function App() {
     
     try {
       const { data, error } = await updateProject(updatedProject);
-      if (error) throw error;
-      setProjects(prev => prev.map(project => 
-        project.id === activeProjectId ? data! : project
-      ));
+      
+      if (error) {
+        console.error('Erro ao atualizar projeto no Supabase:', error);
+        throw error;
+      }
+      
+      console.log('Resposta do Supabase após updateProject:', data);
+      
+      // Verificar especificamente a data prevista
+      if (field === 'estimatedCompletionDate') {
+        console.log('Data prevista no objeto retornado:', data?.estimatedCompletionDate);
+      }
+      
+      setProjects(prevProjects => 
+        prevProjects.map(p => 
+          p.id === activeProjectId ? data! : p
+        )
+      );
     } catch (error) {
       console.error('Erro ao atualizar projeto no Supabase:', error);
-      alert('Erro ao salvar as alterações no projeto.');
+      alert('Erro ao atualizar o projeto.');
     }
   };
 
@@ -2028,7 +2045,10 @@ function App() {
           </div>
         </div>
       ) : !user ? (
-        <Login />
+        <Routes>
+          <Route path="/signup" element={<Signup />} />
+          <Route path="*" element={<Login />} />
+        </Routes>
       ) : isLoadingData ? (
         <div className="fixed inset-0 bg-white flex items-center justify-center">
           <div className="text-center max-w-xs mx-auto">
