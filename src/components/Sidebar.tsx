@@ -118,7 +118,7 @@ export function Sidebar({
   };
   
   return (
-    <div className="bg-gradient-to-b from-gray-800 to-gray-900 text-white w-64 flex flex-col h-screen shadow-xl">
+    <div className="bg-[#334B47] text-white w-64 flex flex-col h-screen shadow-xl">
       {/* Logo e nome da marcenaria */}
       <div className="p-5 border-b border-gray-700/50 flex flex-col items-center">
         {workshopSettings?.logoImage ? (
@@ -141,8 +141,8 @@ export function Sidebar({
     
       {/* Seção Minha Marcenaria (PRIMEIRO) */}
       <div 
-        className={`p-4 border-b border-gray-700/50 flex justify-between items-center cursor-pointer 
-          transition-all duration-200 hover:bg-gray-700/50 relative overflow-hidden group
+        className={`px-4 py-1.5 w-full border-b border-gray-700/50 flex justify-between items-center cursor-pointer 
+          transition-all duration-200 hover:bg-gray-900/50 relative overflow-hidden group
           ${onMyWorkshopView ? 'sidebar-active' : ''}`}
         onClick={() => {
           if (onMyWorkshopView) {
@@ -165,8 +165,8 @@ export function Sidebar({
       
       {/* Seção Resumo Financeiro (SEGUNDO) */}
       <div 
-        className={`p-4 border-b border-gray-700/50 flex justify-between items-center cursor-pointer 
-          transition-all duration-200 hover:bg-gray-700/50 relative overflow-hidden group
+        className={`p-4 py-1.5 border-b border-gray-700/50 flex justify-between items-center cursor-pointer 
+          transition-all duration-200 hover:bg-gray-900/50 relative overflow-hidden group
           ${onFinancialSummaryView ? 'sidebar-active' : ''}`}
         onClick={() => {
           if (onFinancialSummaryView) {
@@ -189,8 +189,8 @@ export function Sidebar({
       
       {/* Seção de Meus Clientes (TERCEIRO) */}
       <div 
-        className={`p-4 border-b border-gray-700/50 flex justify-between items-center cursor-pointer 
-          transition-all duration-200 hover:bg-gray-700/50 relative overflow-hidden group
+        className={`p-4 py-1.5 border-b border-gray-700/50 flex justify-between items-center cursor-pointer 
+          transition-all duration-200 hover:bg-gray-900/50 relative overflow-hidden group
           ${onClientsView ? 'sidebar-active' : ''}`}
         onClick={() => {
           if (onClientsView) {
@@ -213,8 +213,8 @@ export function Sidebar({
       
       {/* Seção de Meus Projetos (QUARTO) */}
       <div 
-        className={`p-4 border-b border-gray-700/50 flex justify-between items-center cursor-pointer 
-          transition-all duration-200 hover:bg-gray-700/50 relative overflow-hidden group
+        className={`p-4 py-1.5 border-b border-gray-900/5 flex justify-between items-center cursor-pointer 
+          transition-all duration-200 hover:bg-gray-900/50 relative overflow-hidden group
           ${onProjectsKanbanView ? 'sidebar-active' : ''}`}
         onClick={() => {
           if (onProjectsKanbanView) {
@@ -249,8 +249,8 @@ export function Sidebar({
               {sortedProjects.map(project => (
                 <li 
                   key={project.id}
-                  className={`px-4 py-2 flex items-center justify-between hover:bg-gray-700/50 cursor-pointer ${
-                    project.id === activeProjectId ? 'bg-gray-700/50' : ''
+                  className={`px-4 py-2 flex items-center justify-between hover:bg-gray-900/50 cursor-pointer ${
+                    project.id === activeProjectId ? 'bg-gray-900/50' : ''
                   }`}
                   onClick={() => onSelectProject(project.id)}
                 >
@@ -284,17 +284,17 @@ export function Sidebar({
       
       <div className="p-4 border-t border-gray-700/50">
         <button
-          className="w-full flex items-center justify-center gap-2 px-4 py-2 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
+          className="w-full flex items-center justify-center gap-2 px-4 py-1 bg-green-700 text-white rounded-md hover:bg-green-800 transition-colors"
           onClick={onCreateProject}
         >
-          <Plus size={20} />
+          <Plus size={18} />
           Novo Projeto
         </button>
         
         {/* Container para os botões Meu Perfil e Sair lado a lado em mobile */}
-        <div className="grid grid-cols-2 md:grid-cols-1 gap-2 mt-2">
+        <div className="grid grid-cols-2 md:grid-cols-2 gap-2 mt-2">
           <button
-            className="flex items-center justify-center gap-2 px-4 py-2 bg-purple-600 text-white rounded-md hover:bg-purple-700 transition-colors text-sm md:text-base"
+            className="flex items-center justify-center gap-2 px-4 py-1 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors text-sm md:text-base"
             onClick={onUserProfileView}
           >
             <User size={18} />
@@ -302,7 +302,7 @@ export function Sidebar({
           </button>
           
           <button
-            className="flex items-center justify-center gap-2 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors text-sm md:text-base"
+            className="flex items-center justify-center gap-2 px-4 py-1 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors text-sm md:text-base"
             onClick={handleLogout}
           >
             <LogOut size={18} />

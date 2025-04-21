@@ -74,9 +74,9 @@ export function Login() {
               {/* Substituindo o texto por uma imagem responsiva */}
               <div className="mb-2">
                 <img 
-                  src="/imagens/banner2.png" 
+                  src="/imagens/banner1.png" 
                   alt="Logo Offi" 
-                  className="w-45 sm:w-45 md:w-80 h-auto" // Responsivo: tamanhos diferentes para diferentes breakpoints
+                  className="w-[250px] sm:w-[350px] md:w-[300px]" // Responsivo: tamanhos diferentes para diferentes breakpoints
                 />
               </div>
               <span className="text-[#FFFFFF] text-sm mt-2">Gestão e Precificação para Marceneiros</span>

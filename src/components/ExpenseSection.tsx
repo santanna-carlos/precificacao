@@ -2,6 +2,7 @@ import React, { useEffect, useState } from 'react';
 import { PlusCircle, Trash2, Settings, ToggleLeft, ToggleRight, Lock } from 'lucide-react';
 import { ExpenseItem, ExpenseType, EXPENSE_OPTIONS } from '../types';
 
+
 interface ExpenseSectionProps {
   title: string;
   type: ExpenseType;

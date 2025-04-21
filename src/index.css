@@ -26,6 +26,10 @@
   }
 }
 
+input[type="checkbox"] {
+  accent-color: #e27900;
+}
+
 /* Garantir que o cabeçalho não fique fixo apenas em dispositivos móveis */
 @media (max-width: 767px) {
   /* Seletor mais específico para o cabeçalho principal */

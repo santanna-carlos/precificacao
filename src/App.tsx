@@ -2129,7 +2129,7 @@ function App() {
         
           {/* Conteúdo principal - Rolável, com margem para a barra lateral em desktop */}
           <div className="flex-1 flex flex-col w-full md:ml-64 overflow-auto">
-            <div className="bg-blue-600 text-white shadow-lg w-full sticky top-0 z-10">
+            <div className="bg-[#506D67] text-white shadow-lg w-full sticky top-0 z-10">
               <div className="container mx-auto px-2 sm:px-4 py-3 sm:py-6">
                 <div className="flex items-center justify-between mb-6">
                   <div className="flex items-center gap-2 sm:gap-3">
@@ -2141,8 +2141,16 @@ function App() {
                       {sidebarOpen ? <X size={20} className="sm:hidden" /> : <Menu size={20} className="sm:hidden" />}
                       {sidebarOpen ? <X size={24} className="hidden sm:block" /> : <Menu size={24} className="hidden sm:block" />}
                     </button>
-                    <Calculator size={24} className="sm:hidden" />
-                    <Calculator size={32} className="hidden sm:block" />
+                    <img
+                      src="/imagens/banner2.png"
+                      alt="Logo Offi"
+                      className="w-20 h-15 sm:hidden"
+                    />
+                    <img
+                      src="/imagens/banner2.png"
+                      alt="Logo Offi"
+                      className="w-40 h-30 hidden sm:block"
+                    />
                     <div className="flex flex-col">
                       <h1 className="text-2xl font-bold hidden sm:inline">Gestão de Processos e Precificação Inteligente para Marceneiros</h1>
                       <h1 className="text-lg font-bold sm:hidden">Gestão e Precificação</h1>
@@ -2212,7 +2220,7 @@ function App() {
                         title="Data de Criação"
                       />
                       <button
-                        className="flex items-center justify-center gap-2 px-4 py-1 h-9 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors disabled:bg-green-400 disabled:cursor-not-allowed"
+                        className="flex items-center justify-center gap-2 px-4 py-1 h-9 bg-[#FFA136] text-white rounded-md hover:bg-[#FF8800] transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
                         onClick={handleSaveProject}
                         disabled={isSaving}
                       >
@@ -2229,7 +2237,7 @@ function App() {
                         )}
                       </button>
                       <button
-                        className="flex items-center justify-center gap-2 px-4 py-1 h-9 bg-blue-700 text-white rounded-md hover:bg-blue-800 transition-colors"
+                        className="flex items-center justify-center gap-2 px-4 py-1 h-9 bg-[#2F524B] text-white rounded-md hover:bg-green-800 transition-colors"
                         onClick={handleDuplicateProject}
                         title="Duplicar projeto"
                       >
@@ -2237,7 +2245,7 @@ function App() {
                         <span className="hidden sm:inline">Duplicar</span>
                       </button>
                       {hasUnsavedChanges && activeProjectId && (
-                        <div className="flex items-center text-amber-200 animate-pulse transition-opacity duration-1000 bg-blue-800 px-3 py-1 h-9 rounded-md">
+                        <div className="flex items-center text-amber-500 animate-pulse transition-opacity duration-1000 bg-gray-800 px-3 py-1 h-9 rounded-md">
                           <AlertCircle size={16} className="mr-1" />
                           <span className="text-xs sm:text-sm">Alterações não salvas</span>
                         </div>
@@ -2432,7 +2440,7 @@ function App() {
 
                       <div className="mt-4 sm:mt-6 flex justify-center">
                         <button
-                          className="flex items-center justify-center gap-2 px-4 py-2 sm:px-6 sm:py-3 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors disabled:bg-green-400 disabled:cursor-not-allowed"
+                          className="flex items-center justify-center gap-2 px-4 py-2 sm:px-6 sm:py-3 bg-[#FFA136] text-white rounded-md hover:bg-[#FF8800] transition-colors disabled:bg-grey-300 disabled:cursor-not-allowed"
                           onClick={handleSaveProject}
                           disabled={isSaving}
                         >

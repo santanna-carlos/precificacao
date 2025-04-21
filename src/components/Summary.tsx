@@ -224,7 +224,7 @@ export function Summary({
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    outerRadius={window.innerWidth < 640 ? 70 : window.innerWidth < 1024 ? 90 : 100}
+                    outerRadius={window.innerWidth < 640 ? 80 : window.innerWidth < 1281 ? 65 : 100}
                     fill="#8884d8"
                     dataKey="value"
                   >
