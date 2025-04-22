@@ -72,14 +72,14 @@ export function Login() {
           <div className="text-center mb-8">
             <div className="flex flex-col items-center">
               {/* Substituindo o texto por uma imagem responsiva */}
-              <div className="mb-2">
+              <div className="mb-">
                 <img 
                   src="/imagens/banner1.png" 
                   alt="Logo Offi" 
                   className="w-[250px] sm:w-[350px] md:w-[300px]" // Responsivo: tamanhos diferentes para diferentes breakpoints
                 />
               </div>
-              <span className="text-[#FFFFFF] text-lg mt-2 mb-2">Gestão e Precificação para Marceneiros</span>
+              <span className="text-[#FFFFFF] text-lg">Gestão e Precificação para Marceneiros</span>
             </div>
           </div>
           
