@@ -69,7 +69,7 @@ export function Login() {
       {/* Conteúdo principal centralizado */}
       <div className="h-screen flex-1 flex flex-col items-center justify-center w-full">
         <div className="bg-[#506D67] rounded-lg shadow-xl p-6 w-full max-w-md">
-          <div className="text-center mb-8">
+          <div className="text-center mb-6">
             <div className="flex flex-col items-center">
               {/* Substituindo o texto por uma imagem responsiva */}
               <div className="mb-">
