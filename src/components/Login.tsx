@@ -76,10 +76,10 @@ export function Login() {
                 <img 
                   src="/imagens/banner1.png" 
                   alt="Logo Offi" 
-                  className="w-[250px] sm:w-[350px] md:w-[300px]" // Responsivo: tamanhos diferentes para diferentes breakpoints
+                  className="w-[230px] sm:w-[300px] md:w-[300px]" // Responsivo: tamanhos diferentes para diferentes breakpoints
                 />
               </div>
-              <span className="text-[#FFFFFF] text-lg">Gestão e Precificação para Marceneiros</span>
+              <span className="text-[#FFFFFF] text-base">Gestão e Precificação para Marceneiros</span>
             </div>
           </div>
           
