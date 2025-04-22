@@ -2,6 +2,7 @@ import React, { createContext, useContext, useEffect, useState } from 'react';
 import { User } from '@supabase/supabase-js';
 import { getCurrentUser, login, logout, resetPassword } from '../auth';
 import { supabase } from '../supabase';
+import { signUp as signUpApi } from '../auth';
 
 interface AuthContextType {
   user: User | null;
@@ -230,6 +231,11 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     return await login(email, password);
   };
 
+  const signUp = async (email: string, password: string, name: string, additionalData?: any) => {
+    // Chame aqui o Supabase ou sua função de cadastro
+    return await signUpApi(email, password, name, additionalData);
+  };
+
   const signOut = async () => {
     await logout();
     setUser(null);
@@ -239,6 +245,7 @@ export function AuthProvider({ children }: { children: React.ReactNode }) {
     user,
     loading,
     signIn,
+    signUp,
     signOut,
     resetPassword,
     refreshSession

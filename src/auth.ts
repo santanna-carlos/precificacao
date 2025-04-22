@@ -16,6 +16,35 @@ export async function registrar(email: string, senha: string, nome: string) {
   return data;
 }
 
+export async function signUp(email: string, password: string, name: string, additionalData?: any) {
+  try {
+    const { data, error } = await supabase.auth.signUp({
+      email,
+      password,
+      options: {
+        data: {
+          name,
+          cpfCnpj: additionalData?.cpfCnpj || '',
+          phone: additionalData?.phone || '',
+          cep: additionalData?.cep || '',
+          addressNumber: additionalData?.addressNumber || '',
+          addressComplement: additionalData?.addressComplement || '',
+        }
+      }
+    });
+
+    if (error) {
+      console.error('Erro ao criar conta:', error.message);
+      return { error };
+    }
+
+    return { data };
+  } catch (err) {
+    console.error('Erro inesperado ao criar conta:', err);
+    return { error: err };
+  }
+}
+
 export async function login(email: string, password: string) {
   try {
     const { data, error } = await supabase.auth.signInWithPassword({

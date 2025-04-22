@@ -79,7 +79,7 @@ export function Login() {
                   className="w-[250px] sm:w-[350px] md:w-[300px]" // Responsivo: tamanhos diferentes para diferentes breakpoints
                 />
               </div>
-              <span className="text-[#FFFFFF] text-sm mt-2">Gestão e Precificação para Marceneiros</span>
+              <span className="text-[#FFFFFF] text-lg mt-2 mb-2">Gestão e Precificação para Marceneiros</span>
             </div>
           </div>
           
@@ -247,7 +247,9 @@ export function Login() {
         
         {/* Texto de crédito abaixo da caixa branca */}
         <div className="text-gray-600 text-sm mt-4 text-center">
-          Desenvolvido por José Carlos Sant'Anna
+          <a href="https://wa.me/31995993693" target="_blank" rel="noopener noreferrer">
+            Desenvolvido por José Carlos Sant'Anna
+          </a>
         </div>
       </div>
     </div>
