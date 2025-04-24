@@ -34,8 +34,6 @@ interface WorkshopExpense {
 
 // Interface para as configurações da marcenaria
 export interface WorkshopSettings {
-  workshopName?: string;
-  logoImage?: string | null; // Alterar o tipo para string | null
   expenses: WorkshopExpense[];
   workingDaysPerMonth: number;
   lastUpdated?: string; // Adicionar campo lastUpdated como opcional
@@ -50,24 +48,12 @@ export const MyWorkshop: React.FC<MyWorkshopProps> = ({ workshopSettings, onSave
   // Estado local para as configurações
   const [settings, setSettings] = useState<WorkshopSettings>(workshopSettings || {
     expenses: [],
-    workshopName: '',
-    logoImage: null
+    workingDaysPerMonth: 22
   });
   
   const [workingDaysInput, setWorkingDaysInput] = useState<string>(
     workshopSettings?.workingDaysPerMonth?.toString() || '22'
   );
-  
-  const [workshopNameInput, setWorkshopNameInput] = useState<string>(
-    workshopSettings?.workshopName || ''
-  );
-  
-  const [logoPreview, setLogoPreview] = useState<string | null>(
-    workshopSettings?.logoImage || null
-  );
-  
-  // Estado para controlar a exibição do modal
-  const [showWorkshopInfoModal, setShowWorkshopInfoModal] = useState<boolean>(false);
   
   // Estado para indicador de carregamento
   const [isSaving, setIsSaving] = useState<boolean>(false);
@@ -76,13 +62,9 @@ export const MyWorkshop: React.FC<MyWorkshopProps> = ({ workshopSettings, onSave
   useEffect(() => {
     setSettings(workshopSettings || {
       workingDaysPerMonth: 22,
-      expenses: [],
-      workshopName: '',
-      logoImage: null
+      expenses: []
     });
     setWorkingDaysInput(workshopSettings?.workingDaysPerMonth?.toString() || '22');
-    setWorkshopNameInput(workshopSettings?.workshopName || '');
-    setLogoPreview(workshopSettings?.logoImage || null);
   }, [workshopSettings]);
   
   // Calcular o total mensal de despesas
@@ -170,17 +152,12 @@ export const MyWorkshop: React.FC<MyWorkshopProps> = ({ workshopSettings, onSave
     // Atualizar a data de última atualização
     const updatedSettings = {
       ...settings,
-      workshopName: workshopNameInput,
-      logoImage: logoPreview || undefined, // Usar undefined em vez de null
       lastUpdated: new Date().toISOString()
     };
     
     // Salvar os dados atualizados
     onSaveSettings(updatedSettings);
     setSettings(updatedSettings);
-    
-    // Fechar o modal após salvar
-    closeWorkshopInfoModal();
     
     // Mostrar feedback com timeout para simular o tempo de processamento
     setTimeout(() => {
@@ -207,78 +184,13 @@ export const MyWorkshop: React.FC<MyWorkshopProps> = ({ workshopSettings, onSave
     });
   };
   
-  // Função para atualizar o nome da marcenaria
-  const handleWorkshopNameChange = (value: string) => {
-    setWorkshopNameInput(value);
-  };
-  
-  // Função para atualizar a logo da marcenaria
-  const handleLogoChange = (event: React.ChangeEvent<HTMLInputElement>) => {
-    if (event.target.files && event.target.files[0]) {
-      const file = event.target.files[0];
-      const reader = new FileReader();
-      
-      reader.onload = (e) => {
-        if (e.target && e.target.result) {
-          setLogoPreview(e.target.result as string);
-        }
-      };
-      
-      reader.readAsDataURL(file);
-    }
-  };
-  
-  // Função para abrir o modal de informações da marcenaria
-  const openWorkshopInfoModal = () => {
-    setShowWorkshopInfoModal(true);
-  };
-  
-  // Função para fechar o modal de informações da marcenaria
-  const closeWorkshopInfoModal = () => {
-    setShowWorkshopInfoModal(false);
-  };
-  
-  // Função para salvar as informações da marcenaria e fechar o modal
-  const saveWorkshopInfo = () => {
-    const updatedSettings = {
-      ...settings,
-      workshopName: workshopNameInput,
-      logoImage: logoPreview || undefined, // Usar undefined em vez de null
-      lastUpdated: new Date().toISOString()
-    };
-    
-    // Atualizar o estado local
-    setSettings(updatedSettings);
-    
-    // Chamar a função do componente pai para atualizar o estado global e salvar no localStorage
-    onSaveSettings(updatedSettings);
-    
-    // Mostrar mensagem de feedback
-    alert('Informações da marcenaria atualizadas com sucesso!');
-    
-    // Fechar o modal
-    closeWorkshopInfoModal();
-  };
-  
   return (
     <div className="bg-white rounded-lg shadow-md p-3 sm:p-6">
       {/* Cabeçalho com título */}
       <div className="flex justify-between items-center mb-6">
-        <h2 className="text-xl sm:text-2xl font-bold text-gray-800 flex items-center">
-          <Building2 className="mr-2 text-blue-600" size={28} />
+        <h2 className="text-xl sm:text-2xl font-bold text-gray-800">
           Minha Marcenaria
         </h2>
-        
-        {/* Botão para abrir o modal de informações da marcenaria */}
-        <button
-          onClick={openWorkshopInfoModal}
-          className="bg-blue-600 hover:bg-blue-700 text-white font-medium px-3 py-2 rounded-md flex items-center text-sm transition-colors"
-        >
-          <svg xmlns="http://www.w3.org/2000/svg" className="h-4 w-4 mr-1" viewBox="0 0 20 20" fill="currentColor">
-            <path d="M13.586 3.586a2 2 0 112.828 2.828l-.793.793-2.828-2.828.793-.793zM11.379 5.793L3 14.172V17h2.828l8.38-8.379-2.83-2.828z" />
-          </svg>
-          Editar Informações
-        </button>
       </div>
       
       {/* Cards de resumo e configurações */}
@@ -617,83 +529,6 @@ export const MyWorkshop: React.FC<MyWorkshopProps> = ({ workshopSettings, onSave
           </div>
         )}
       </div>
-      
-      {/* Modal de informações da marcenaria */}
-      {showWorkshopInfoModal && (
-        <div className="fixed inset-0 z-50 overflow-y-auto">
-          <div className="flex items-center justify-center min-h-screen pt-4 px-4 pb-20 text-center sm:block sm:p-0">
-            {/* Overlay escuro */}
-            <div 
-              className="fixed inset-0 transition-opacity" 
-              aria-hidden="true"
-              onClick={closeWorkshopInfoModal}
-            >
-              <div className="absolute inset-0 bg-gray-500 opacity-75"></div>
-            </div>
-            
-            {/* Modal */}
-            <div className="inline-block align-bottom bg-white rounded-lg text-left overflow-hidden shadow-xl transform transition-all sm:my-8 sm:align-middle sm:max-w-lg sm:w-full">
-              <div className="bg-white px-4 pt-5 pb-4 sm:p-6 sm:pb-4">
-                <div className="sm:flex sm:items-start">
-                  <div className="mt-3 text-center sm:mt-0 sm:ml-4 sm:text-left w-full">
-                    <h3 className="text-lg leading-6 font-medium text-gray-900 mb-4">
-                      Informações da Marcenaria
-                    </h3>
-                    
-                    <div className="mb-4">
-                      <label htmlFor="workshopName" className="block text-sm font-medium text-gray-700 mb-2">
-                        Nome da Marcenaria
-                      </label>
-                      <input
-                        type="text"
-                        id="workshopName"
-                        value={workshopNameInput}
-                        onChange={(e) => handleWorkshopNameChange(e.target.value)}
-                        className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                    </div>
-                    
-                    <div className="mb-4">
-                      <label htmlFor="logo" className="block text-sm font-medium text-gray-700 mb-2">
-                        Logo da Marcenaria
-                      </label>
-                      <input
-                        type="file"
-                        id="logo"
-                        accept="image/*"
-                        onChange={handleLogoChange}
-                        className="w-full p-2 border border-gray-300 rounded-md focus:outline-none focus:ring-2 focus:ring-blue-500"
-                      />
-                      {logoPreview && (
-                        <div className="mt-2">
-                          <img src={logoPreview} alt="Logo da Marcenaria" className="w-20 h-20 object-cover rounded-md" />
-                        </div>
-                      )}
-                    </div>
-                  </div>
-                </div>
-              </div>
-              
-              <div className="bg-gray-50 px-4 py-3 sm:px-6 sm:flex sm:flex-row-reverse">
-                <button
-                  type="button"
-                  onClick={saveWorkshopInfo}
-                  className="w-full inline-flex justify-center rounded-md border border-transparent shadow-sm px-4 py-2 bg-blue-600 text-base font-medium text-white hover:bg-blue-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-blue-500 sm:ml-3 sm:w-auto sm:text-sm"
-                >
-                  Salvar
-                </button>
-                <button
-                  type="button"
-                  onClick={closeWorkshopInfoModal}
-                  className="mt-3 w-full inline-flex justify-center rounded-md border border-gray-300 shadow-sm px-4 py-2 bg-white text-base font-medium text-gray-700 hover:bg-gray-50 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-indigo-500 sm:mt-0 sm:ml-3 sm:w-auto sm:text-sm"
-                >
-                  Cancelar
-                </button>
-              </div>
-            </div>
-          </div>
-        </div>
-      )}
       
       {/* Botão de salvar no final da página */}
       <div className="flex flex-col items-center mt-6">

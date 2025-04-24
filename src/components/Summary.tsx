@@ -214,7 +214,7 @@ export function Summary({
             {renderLegend()}
           </div>
           
-          <div className="h-[250px] sm:h-[280px] lg:h-[300px] bg-gray-50 rounded-lg p-2 sm:p-4">
+          <div className="h-[280px] sm:h-[280px] lg:h-[300px] bg-gray-50 rounded-lg p-2 sm:p-4">
             <h3 className="font-medium text-gray-700 mb-2 sm:mb-3 text-sm sm:text-base">Gráfico</h3>
             <div className="h-[calc(100%-30px)]">
               <ResponsiveContainer width="100%" height="100%">
@@ -224,7 +224,7 @@ export function Summary({
                     cx="50%"
                     cy="50%"
                     labelLine={false}
-                    outerRadius={window.innerWidth < 640 ? 80 : window.innerWidth < 1281 ? 65 : 100}
+                    outerRadius={window.innerWidth < 640 ? 80 : window.innerWidth < 1367 ? 80 : 100}
                     fill="#8884d8"
                     dataKey="value"
                   >

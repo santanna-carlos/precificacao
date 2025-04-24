@@ -29,27 +29,12 @@ const dbToProjectFormat = (dbProject: any, expenses: ExpenseItem[]): Project => 
   console.log('Dados brutos do banco de dados:', dbProject);
   console.log('Data prevista no banco:', dbProject.estimated_completion_date);
   
-  // Tratamento da data prevista
+  // Tratamento da data prevista - usar diretamente a string da data para evitar problemas de fuso horário
   let estimatedDate = null;
   if (dbProject.estimated_completion_date) {
-    try {
-      // Converter a data ISO para o formato esperado pelo input date (YYYY-MM-DD)
-      const date = new Date(dbProject.estimated_completion_date);
-      estimatedDate = date.toISOString().split('T')[0];
-      console.log('Data prevista convertida:', estimatedDate);
-    } catch (error) {
-      console.error('Erro ao converter data prevista:', error);
-      // Se houver erro na conversão, tentar usar a string diretamente
-      // Isso é útil caso a data já esteja no formato YYYY-MM-DD
-      if (typeof dbProject.estimated_completion_date === 'string') {
-        estimatedDate = dbProject.estimated_completion_date;
-        console.log('Usando data prevista como string:', estimatedDate);
-      } else {
-        estimatedDate = null;
-      }
-    }
-  } else {
-    console.log('Nenhuma data prevista encontrada no objeto do banco');
+    // Usar a string diretamente, sem conversão por new Date()
+    estimatedDate = dbProject.estimated_completion_date;
+    console.log('Data prevista usada diretamente:', estimatedDate);
   }
   
   const project = {

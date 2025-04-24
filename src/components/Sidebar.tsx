@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { Plus, Trash2, Users, LayoutDashboard, Building2, BarChart3, LogOut, User } from 'lucide-react';
 import { Project, WorkshopSettings } from '../types';
 import { useAuth } from '../contexts/AuthContext';
@@ -16,6 +16,7 @@ interface SidebarProps {
   onMyWorkshopSettingsView?: () => void;
   onFinancialSummaryView?: () => void;
   onUserProfileView?: () => void;
+  onShowDashboard?: () => void;
   workshopSettings?: WorkshopSettings;
 }
 
@@ -32,9 +33,11 @@ export function Sidebar({
   onMyWorkshopSettingsView,
   onFinancialSummaryView,
   onUserProfileView,
+  onShowDashboard,
   workshopSettings
 }: SidebarProps) {
   const { signOut } = useAuth();
+  const [activeSection, setActiveSection] = useState('');
 
   // Função para lidar com o logout
   const handleLogout = async () => {
@@ -116,35 +119,62 @@ export function Sidebar({
     const status = getProjectStatus(project);
     return status === 'toStart' ? 'bg-amber-400' : 'bg-cyan-400';
   };
-  
+
+  // Função para selecionar um projeto e limpar a seleção da seção
+  const handleSelectProject = (projectId: string) => {
+    setActiveSection(''); // Limpa a seleção da seção quando um projeto é selecionado
+    onSelectProject(projectId);
+    // Fechar a barra lateral em dispositivos móveis
+    if (onClose && window.innerWidth < 768) {
+      onClose();
+    }
+  };
+
   return (
     <div className="bg-[#334B47] text-white w-64 flex flex-col h-screen shadow-xl">
       {/* Logo e nome da marcenaria */}
       <div className="p-5 border-b border-gray-700/50 flex flex-col items-center">
-        {workshopSettings?.logoImage ? (
-          <div className="w-20 h-20 mb-2 overflow-hidden rounded-full bg-white/10 flex items-center justify-center">
-            <img 
-              src={workshopSettings.logoImage} 
-              alt="Logo da Marcenaria" 
-              className="w-full h-full object-contain"
-            />
-          </div>
-        ) : (
-          <div className="w-20 h-20 mb-2 rounded-full bg-white/10 flex items-center justify-center">
-            <Building2 size={32} className="text-white/80" />
-          </div>
-        )}
-        <h1 className="text-xl font-bold text-center bg-clip-text text-transparent bg-gradient-to-r from-white to-white">
-          {workshopSettings?.workshopName || "Marcenaria"}
-        </h1>
+        <div className="my-1 overflow-hidden flex items-center justify-center">
+          <img 
+            src="/imagens/logo_cor_verde_334B47.png" 
+            alt="Logo Offi" 
+            className="w-48 h-auto object-contain"
+          />
+        </div>
       </div>
     
-      {/* Seção Minha Marcenaria (PRIMEIRO) */}
+      {/* Seção Dashboard (PRIMEIRO) */}
       <div 
         className={`px-4 py-1.5 w-full border-b border-gray-700/50 flex justify-between items-center cursor-pointer 
           transition-all duration-200 hover:bg-gray-900/50 relative overflow-hidden group
-          ${onMyWorkshopView ? 'sidebar-active' : ''}`}
+          ${activeSection === 'dashboard' ? 'bg-gray-900/80' : ''}`}
         onClick={() => {
+          setActiveSection('dashboard');
+          if (onShowDashboard) {
+            onShowDashboard();
+          }
+          // Fechar a barra lateral em dispositivos móveis
+          if (onClose && window.innerWidth < 768) {
+            onClose();
+          }
+        }}
+      >
+        <div className="flex items-center gap-3 z-10">
+          <div className="p-1.5 rounded-md bg-purple-500/20 group-hover:bg-purple-500/30 transition-colors">
+            <LayoutDashboard size={18} className="text-purple-400" />
+          </div>
+          <h2 className="text-base font-medium">Página Inicial</h2>
+        </div>
+        <div className="absolute left-0 h-full w-1 bg-purple-500 transform -translate-x-full group-hover:translate-x-0 transition-transform duration-200"></div>
+      </div>
+
+      {/* Seção Minha Marcenaria (SEGUNDO) */}
+      <div 
+        className={`px-4 py-1.5 w-full border-b border-gray-700/50 flex justify-between items-center cursor-pointer 
+          transition-all duration-200 hover:bg-gray-900/50 relative overflow-hidden group
+          ${activeSection === 'myWorkshop' ? 'bg-gray-900/80' : ''}`}
+        onClick={() => {
+          setActiveSection('myWorkshop');
           if (onMyWorkshopView) {
             onMyWorkshopView();
           }
@@ -163,12 +193,13 @@ export function Sidebar({
         <div className="absolute left-0 h-full w-1 bg-blue-500 transform -translate-x-full group-hover:translate-x-0 transition-transform duration-200"></div>
       </div>
       
-      {/* Seção Resumo Financeiro (SEGUNDO) */}
+      {/* Seção Resumo Financeiro (TERCEIRO) */}
       <div 
         className={`p-4 py-1.5 border-b border-gray-700/50 flex justify-between items-center cursor-pointer 
           transition-all duration-200 hover:bg-gray-900/50 relative overflow-hidden group
-          ${onFinancialSummaryView ? 'sidebar-active' : ''}`}
+          ${activeSection === 'financialSummary' ? 'bg-gray-900/80' : ''}`}
         onClick={() => {
+          setActiveSection('financialSummary');
           if (onFinancialSummaryView) {
             onFinancialSummaryView();
           }
@@ -187,12 +218,13 @@ export function Sidebar({
         <div className="absolute left-0 h-full w-1 bg-green-500 transform -translate-x-full group-hover:translate-x-0 transition-transform duration-200"></div>
       </div>
       
-      {/* Seção de Meus Clientes (TERCEIRO) */}
+      {/* Seção de Meus Clientes (QUARTO) */}
       <div 
         className={`p-4 py-1.5 border-b border-gray-700/50 flex justify-between items-center cursor-pointer 
           transition-all duration-200 hover:bg-gray-900/50 relative overflow-hidden group
-          ${onClientsView ? 'sidebar-active' : ''}`}
+          ${activeSection === 'clients' ? 'bg-gray-900/80' : ''}`}
         onClick={() => {
+          setActiveSection('clients');
           if (onClientsView) {
             onClientsView();
           }
@@ -211,12 +243,13 @@ export function Sidebar({
         <div className="absolute left-0 h-full w-1 bg-purple-500 transform -translate-x-full group-hover:translate-x-0 transition-transform duration-200"></div>
       </div>
       
-      {/* Seção de Meus Projetos (QUARTO) */}
+      {/* Seção de Meus Projetos (QUINTO) */}
       <div 
         className={`p-4 py-1.5 border-b border-gray-900/5 flex justify-between items-center cursor-pointer 
           transition-all duration-200 hover:bg-gray-900/50 relative overflow-hidden group
-          ${onProjectsKanbanView ? 'sidebar-active' : ''}`}
+          ${activeSection === 'projects' ? 'bg-gray-900/80' : ''}`}
         onClick={() => {
+          setActiveSection('projects');
           if (onProjectsKanbanView) {
             onProjectsKanbanView();
           }
@@ -252,7 +285,7 @@ export function Sidebar({
                   className={`px-4 py-2 flex items-center justify-between hover:bg-gray-900/50 cursor-pointer ${
                     project.id === activeProjectId ? 'bg-gray-900/50' : ''
                   }`}
-                  onClick={() => onSelectProject(project.id)}
+                  onClick={() => handleSelectProject(project.id)}
                 >
                   <div className="flex items-center gap-2 flex-1 min-w-0">
                     <div className={`w-2 h-full min-h-[24px] rounded-sm ${getStatusIndicatorColor(project)}`}></div>
@@ -284,7 +317,7 @@ export function Sidebar({
       
       <div className="p-4 border-t border-gray-700/50">
         <button
-          className="w-full flex items-center justify-center gap-2 px-4 py-1 bg-green-700 text-white rounded-md hover:bg-green-800 transition-colors"
+          className="w-full flex items-center justify-center gap-2 px-4 py-1 bg-green-600 text-white rounded-md hover:bg-green-800 transition-colors"
           onClick={onCreateProject}
         >
           <Plus size={18} />

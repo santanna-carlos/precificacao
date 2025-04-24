@@ -22,30 +22,44 @@ export const ProjectStagesBar: React.FC<ProjectStagesBarProps> = ({
   estimatedCompletionDate: propEstimatedCompletionDate,
   onUpdateProject 
 }) => {
+  // 1. Todos os hooks useState no início do componente
   const [isExpandedMobile, setIsExpandedMobile] = useState(false);
   const [isExpandedDesktop, setIsExpandedDesktop] = useState(true); 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [showCopyConfirmation, setShowCopyConfirmation] = useState(false);
-  const [estimatedCompletionDate, setEstimatedCompletionDate] = useState<string>(propEstimatedCompletionDate || '');
+  // Inicializar sempre com string vazia para evitar undefined
+  const [estimatedCompletionDate, setEstimatedCompletionDate] = useState<string>('');
   const [isLoading, setIsLoading] = useState(false);
   const [loadingStageId, setLoadingStageId] = useState<string | null>(null);
 
-  // Sincronizar o estado com a prop sempre que ela mudar
+  // 2. Todos os useEffect juntos, após todos os useState
+  // Sincronizar com propEstimatedCompletionDate
   useEffect(() => {
-    if (propEstimatedCompletionDate !== undefined) {
-      console.log('ProjectStagesBar - Atualizando estado com nova prop de data:', propEstimatedCompletionDate);
-      setEstimatedCompletionDate(propEstimatedCompletionDate);
-    }
+    // Sempre atualizar o estado, sem condicionais
+    setEstimatedCompletionDate(propEstimatedCompletionDate || '');
   }, [propEstimatedCompletionDate]);
 
-  const toggleExpandMobile = () => {
-    setIsExpandedMobile(!isExpandedMobile);
-  };
+  // Carregar dados do localStorage quando o projectId mudar
+  useEffect(() => {
+    if (!projectId) return;
+    
+    // Não carregar do localStorage se já temos um valor da prop
+    if (propEstimatedCompletionDate) return;
+    
+    try {
+      const cachedProjects = JSON.parse(localStorage.getItem('cachedProjects') || '[]');
+      const projectFromStorage = cachedProjects.find((p: any) => p.id === projectId);
+      
+      if (projectFromStorage?.estimatedCompletionDate && 
+          typeof projectFromStorage.estimatedCompletionDate === 'string') {
+        setEstimatedCompletionDate(projectFromStorage.estimatedCompletionDate);
+      }
+    } catch (error) {
+      console.error('Erro ao carregar dados do localStorage:', error);
+    }
+  }, [projectId, propEstimatedCompletionDate]);
 
-  const toggleExpandDesktop = () => {
-    setIsExpandedDesktop(!isExpandedDesktop);
-  };
-
+  // 3. Valores derivados e funções após todos os hooks
   const regularStages = PROJECT_STAGES.filter(stage => stage.id !== 'projetoCancelado');
   const cancelStage = PROJECT_STAGES.find(stage => stage.id === 'projetoCancelado');
   
@@ -53,10 +67,17 @@ export const ProjectStagesBar: React.FC<ProjectStagesBarProps> = ({
   const secondRowStages = regularStages.slice(5);
 
   const isProjectCanceled = stages.projetoCancelado?.completed || false;
-  
   const isProjectCompleted = stages.instalacao?.completed || false;
-
   const isProjectTechnicalCompleted = stages.projetoTecnico?.completed || false;
+
+  // 4. Definir funções de manipulação de eventos
+  const toggleExpandMobile = () => {
+    setIsExpandedMobile(!isExpandedMobile);
+  };
+
+  const toggleExpandDesktop = () => {
+    setIsExpandedDesktop(!isExpandedDesktop);
+  };
 
   const canCompleteStage = (stageIndex: number, stageId: string): boolean => {
     if (stageId === 'projetoCancelado') {
@@ -268,84 +289,46 @@ export const ProjectStagesBar: React.FC<ProjectStagesBarProps> = ({
     }
   };
 
-  useEffect(() => {
-    if (projectId) {
-      console.log('ProjectStagesBar useEffect - projectId alterado:', projectId);
-      
-      // Se a prop foi fornecida, usá-la
-      if (propEstimatedCompletionDate) {
-        console.log('Usando data prevista fornecida como prop:', propEstimatedCompletionDate);
-        setEstimatedCompletionDate(propEstimatedCompletionDate);
-        return;
-      }
-      
-      // Caso contrário, tentar obter do localStorage
-      const cachedProjects = JSON.parse(localStorage.getItem('cachedProjects') || '[]');
-      const projectFromStorage = cachedProjects.find((p: any) => p.id === projectId);
-      
-      if (projectFromStorage) {
-        console.log('Projeto encontrado no localStorage (cachedProjects):', projectFromStorage);
-        
-        if (projectFromStorage.estimatedCompletionDate) {
-          console.log('Data prevista encontrada no localStorage:', projectFromStorage.estimatedCompletionDate);
-          // Converter para formato YYYY-MM-DD para o input date
-          try {
-            const date = new Date(projectFromStorage.estimatedCompletionDate);
-            const formattedDate = date.toISOString().split('T')[0];
-            setEstimatedCompletionDate(formattedDate);
-          } catch (error) {
-            console.error('Erro ao converter data do localStorage:', error);
-            // Se já estiver no formato correto, usar diretamente
-            if (typeof projectFromStorage.estimatedCompletionDate === 'string') {
-              setEstimatedCompletionDate(projectFromStorage.estimatedCompletionDate);
-            } else {
-              setEstimatedCompletionDate('');
-            }
-          }
-        } else {
-          console.log('Nenhuma data prevista encontrada no localStorage para o projeto');
-          setEstimatedCompletionDate('');
-        }
-      } else {
-        console.log('Projeto não encontrado no localStorage (cachedProjects)');
-        setEstimatedCompletionDate('');
-      }
-    }
-  }, [projectId]);
-
+  // 5. Renderização - sem condicionais que possam afetar a estrutura dos componentes
   return (
-    <div className="bg-gray-100 border-b border-gray-300 py-3 px-2 sm:px-4">
+    <div className="bg-gray-100 border-gray-300 py-3 px-2 sm:px-4">
       <div className="container mx-auto">
         <div className="flex justify-between items-center mb-2">
-          <div className="text-sm sm:text-base md:text-lg font-medium text-gray-700">Etapas do Projeto:</div>
-          <div className="flex gap-2">
-            {isProjectTechnicalCompleted && !isProjectCanceled && (
-              <div className="flex items-center gap-2">
-                <div className="flex items-center bg-gray-50 p-1 rounded-md border border-gray-200">
-                  <label htmlFor={`estimatedDate-${projectId}`} className="text-xs text-gray-600 mr-1 whitespace-nowrap hidden sm:inline">
-                    Data prevista:
-                  </label>
-                  <input
-                    type="date"
-                    id={`estimatedDate-${projectId}`}
-                    value={estimatedCompletionDate}
-                    onChange={handleDateChange}
-                    className="text-xs border border-gray-300 rounded-md p-1 focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    onClick={openDatePicker}
-                    onKeyDown={preventDirectTyping}
-                  />
-                </div>
-                <button
-                  className="flex items-center justify-center p-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md transition-colors"
-                  onClick={handleShareLink}
-                  title={`Compartilhar link de acompanhamento para ${clientName} - ${projectName}`}
-                  disabled={!estimatedCompletionDate}
-                >
-                  <Share2 size={18} className="mr-1" />
-                  <span className="text-xs hidden sm:inline">Compartilhar</span>
-                </button>
+          <div className="text-base sm:text-base md:text-xl font-medium text-gray-900 ml-1">Etapas do Projeto:</div>
+          <div className="flex gap-2 mr-1">
+            {/* Renderizar sempre o container, mas controlar a visibilidade via CSS */}
+            <div 
+              className="flex items-center gap-2" 
+              style={{ 
+                visibility: isProjectTechnicalCompleted && !isProjectCanceled ? 'visible' : 'hidden',
+                display: isProjectTechnicalCompleted && !isProjectCanceled ? 'flex' : 'none'
+              }}
+            >
+              <div className="flex items-center bg-gray-50 p-1 rounded-md border border-gray-200">
+                <label htmlFor={`estimatedDate-${projectId}`} className="text-xs text-gray-600 mr-2 ml-1 whitespace-nowrap hidden sm:inline">
+                  Data prevista:
+                </label>
+                <input
+                  type="date"
+                  id={`estimatedDate-${projectId}`}
+                  value={estimatedCompletionDate}
+                  onChange={handleDateChange}
+                  className="text-xs border border-gray-300 rounded-md p-1 focus:outline-none focus:ring-1 focus:ring-blue-500"
+                  onClick={openDatePicker}
+                  onKeyDown={preventDirectTyping}
+                  disabled={!isProjectTechnicalCompleted || isProjectCanceled}
+                />
               </div>
-            )}
+              <button
+                className="flex items-center justify-center p-1 bg-indigo-600 hover:bg-indigo-700 text-white rounded-md transition-colors"
+                onClick={handleShareLink}
+                title={`Compartilhar link de acompanhamento para ${clientName} - ${projectName}`}
+                disabled={!estimatedCompletionDate || !isProjectTechnicalCompleted || isProjectCanceled}
+              >
+                <Share2 size={18} className="mr-1" />
+                <span className="text-xs hidden sm:inline mx-1 my-1 mr-1 ml-1">Compartilhar</span>
+              </button>
+            </div>
             
             <button
               className="sm:hidden flex items-center justify-center p-1 bg-blue-600 text-white rounded-md"

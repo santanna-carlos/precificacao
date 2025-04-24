@@ -394,37 +394,42 @@ export function FinancialSummary({ projects, workshopSettings, onBack, onDeleteP
   const annualAverageTicket = annualProjects > 0 ? annualRevenue / annualProjects : 0;
 
   return (
-    <div className="bg-white rounded-lg shadow-md p-4 sm:p-6">
+    <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-4">
       <div className="mb-6">
         <div className="flex justify-between items-center mb-2">
           <h2 className="text-2xl font-bold text-gray-800">Resumo Financeiro</h2>
           
-          {/* Filtro de ano */}
-          <div className="relative">
-            <button 
-              className="flex items-center px-3 py-2 bg-blue-50 border border-blue-100 rounded-md text-blue-700"
-              onClick={() => setShowYearDropdown(!showYearDropdown)}
-            >
-              <span>{selectedYear}</span>
-              <ChevronDown size={16} className="ml-2" />
-            </button>
+          {/* Filtros de ano e tipo de visualização */}
+          <div className="flex items-center gap-2">
+            {/* Botão de alternar visualização anual/total removido daqui */}
             
-            {showYearDropdown && (
-              <div className="absolute top-full right-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-10">
-                {availableYears.map(year => (
-                  <button
-                    key={year}
-                    className={`block w-full text-left px-4 py-2 hover:bg-gray-100 ${selectedYear === year ? 'bg-blue-50 text-blue-700' : ''}`}
-                    onClick={() => {
-                      setSelectedYear(year);
-                      setShowYearDropdown(false);
-                    }}
-                  >
-                    {year}
-                  </button>
-                ))}
-              </div>
-            )}
+            {/* Filtro de ano */}
+            <div className="relative">
+              <button 
+                className="flex items-center px-3 py-2 bg-blue-50 border border-blue-100 rounded-md text-blue-700"
+                onClick={() => setShowYearDropdown(!showYearDropdown)}
+              >
+                <span>{selectedYear}</span>
+                <ChevronDown size={16} className="ml-2" />
+              </button>
+              
+              {showYearDropdown && (
+                <div className="absolute top-full right-0 mt-1 bg-white border border-gray-200 rounded-md shadow-lg z-10">
+                  {availableYears.map(year => (
+                    <button
+                      key={year}
+                      className={`block w-full text-left px-4 py-2 hover:bg-gray-100 ${selectedYear === year ? 'bg-blue-50 text-blue-700' : ''}`}
+                      onClick={() => {
+                        setSelectedYear(year);
+                        setShowYearDropdown(false);
+                      }}
+                    >
+                      {year}
+                    </button>
+                  ))}
+                </div>
+              )}
+            </div>
           </div>
         </div>
         <p className="text-gray-600">
@@ -434,34 +439,33 @@ export function FinancialSummary({ projects, workshopSettings, onBack, onDeleteP
 
       {/* Cards de estatísticas */}
       <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
-        <div className="bg-indigo-50 rounded-lg p-4 border border-indigo-100">
-          <div className="flex items-center justify-between mb-2">
-            <div className="flex items-center">
-              <div className="bg-indigo-500 rounded-full p-2 mr-3">
-                <DollarSign size={20} className="text-white" />
-              </div>
-              <div>
-                <p className="text-sm text-indigo-700">Faturamento Médio Mensal</p>
-                <p className="text-xl text-indigo-900">
-                  {monthlyAverageRevenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
-                </p>
-              </div>
+        <div className="bg-indigo-50 rounded-lg p-2 sm:p-2 border border-indigo-100">
+          <div className="flex items-center mb-2 sm:py-2">
+            <div className="bg-indigo-500 rounded-full p-2 mr-2">
+              <DollarSign size={18} className="text-white" />
             </div>
-            <div className="mt-1">
-              <p className="text-xs text-indigo-600 text-center sm:text-left">
-                {selectedYear === new Date().getFullYear() ? 
-                  `Média: ${new Date().getMonth() + 1} ${window.innerWidth < 640 ? 'meses' : 'meses decorridos'}` : 
-                  'Média: anual (12 meses)'}
+            <div>
+              <p className="text-sm text-indigo-700 ">Faturamento Médio Mensal</p>
+              <p className="text-xl text-indigo-900">
+                {monthlyAverageRevenue.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
               </p>
             </div>
           </div>
+          {/* Mensagem de média movida para baixo */}
+          <div className="mt-2 text-center sm:text-left sm:ml-10">
+            <p className="text-xs text-indigo-600">
+              {selectedYear === new Date().getFullYear() ? 
+                `Média: ${new Date().getMonth() + 1} ${window.innerWidth < 640 ? 'meses' : 'meses decorridos'}` : 
+                'Média: anual (12 meses)'}
+            </p>
+          </div>
         </div>
         
-        <div className="bg-blue-50 rounded-lg p-4 border border-blue-100">
+        <div className="bg-blue-50 rounded-lg p-3 sm:p-4 border border-blue-100">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center">
-              <div className="bg-blue-500 rounded-full p-2 mr-3">
-                <DollarSign size={20} className="text-white" />
+              <div className="bg-blue-500 rounded-full p-2 mr-2">
+                <DollarSign size={18} className="text-white" />
               </div>
               <div>
                 <p className="text-sm text-blue-700">Faturamento {showAnnualRevenue ? `${selectedYear}` : 'Total'}</p>
@@ -470,36 +474,36 @@ export function FinancialSummary({ projects, workshopSettings, onBack, onDeleteP
                 </p>
               </div>
             </div>
-            <div className="relative">
-              <button 
-                className="text-xs px-2 py-1 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-md"
-                onClick={() => setShowAnnualRevenue(!showAnnualRevenue)}
-              >
-                {showAnnualRevenue ? 'Ver Total' : 'Ver Anual'}
-              </button>
-            </div>
+          </div>
+          <div className="flex justify-center mb-1 mt-1 sm:justify-start md:justify-center">
+            <button 
+              className="text-xs px-3 py-1.5 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-md"
+              onClick={() => setShowAnnualRevenue(!showAnnualRevenue)}
+            >
+              {showAnnualRevenue ? 'Ver Total' : 'Ver Anual'}
+            </button>
           </div>
         </div>
         
-        <div className="bg-green-50 rounded-lg p-4 border border-green-100">
+        <div className="bg-green-50 rounded-lg p-3 sm:p-4 border border-green-100">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center">
-              <div className="bg-green-500 rounded-full p-2 mr-3">
-                <BarChart3 size={20} className="text-white" />
+              <div className="bg-green-500 rounded-full p-2 mr-2">
+                <BarChart3 size={18} className="text-white" />
               </div>
               <div>
                 <p className="text-sm text-green-700">Projetos {showAnnualRevenue ? `${selectedYear}` : 'Total'}</p>
-                <p className="text-xl text-green-900">{showAnnualRevenue ? annualProjects : totalProjects}</p>
+                <p className="text-xl text-green-900 text-center">{showAnnualRevenue ? annualProjects : totalProjects}</p>
               </div>
             </div>
           </div>
         </div>
         
-        <div className="bg-purple-50 rounded-lg p-4 border border-purple-100">
+        <div className="bg-purple-50 rounded-lg p-3 sm:p-4 border border-purple-100">
           <div className="flex items-center justify-between mb-2">
             <div className="flex items-center">
-              <div className="bg-purple-500 rounded-full p-2 mr-3">
-                <TrendingUp size={20} className="text-white" />
+              <div className="bg-purple-500 rounded-full p-2 mr-2">
+                <TrendingUp size={18} className="text-white" />
               </div>
               <div>
                 <p className="text-sm text-purple-700">Ticket Médio {showAnnualRevenue ? `${selectedYear}` : 'Total'}</p>

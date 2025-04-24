@@ -110,7 +110,7 @@ export function ExpenseSection({
           <button 
             onClick={() => !disabled && onAdd()}
             disabled={disabled}
-            className={`flex items-center gap-1 sm:gap-2 px-3 py-1 sm:px-4 sm:py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors text-xs sm:text-base w-full sm:w-auto justify-center sm:justify-start ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
+            className={`flex items-center gap-1 sm:gap-2 px-3 py-1 sm:px-4 sm:py-2 bg-green-600 text-white rounded-md hover:bg-green-700 transition-colors sm:text-base w-full sm:w-auto justify-center sm:justify-start ${disabled ? 'opacity-50 cursor-not-allowed' : ''}`}
           >
             <PlusCircle size={16} className="sm:hidden" />
             <PlusCircle size={20} className="hidden sm:block" />

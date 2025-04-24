@@ -357,7 +357,7 @@ export function ClientsList({ clients, projects = [], onAddClient, onUpdateClien
   return (
     <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-4">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
-        <h2 className="text-2xl font-bold text-gray-800 mb-2 sm:mb-0">Meus Clientes</h2>
+        <h2 className="text-2xl font-bold text-gray-800">Meus Clientes</h2>
         
         <div className="flex flex-wrap gap-2 text-sm">
           {totalClients > 0 && (
@@ -376,13 +376,6 @@ export function ClientsList({ clients, projects = [], onAddClient, onUpdateClien
               </div>
             </>
           )}
-          <button 
-            onClick={handleAddNewClient}
-            className="bg-blue-600 text-white px-3 py-1 rounded-full font-medium flex items-center hover:bg-blue-700 transition-colors"
-          >
-            <Plus size={14} className="mr-1" />
-            Novo Cliente
-          </button>
         </div>
       </div>
       
@@ -524,58 +517,51 @@ export function ClientsList({ clients, projects = [], onAddClient, onUpdateClien
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-3">
           {filteredClients.map((client, index) => (
             <div 
               key={index}
-              className={`bg-white rounded-lg border overflow-hidden hover:shadow-md transition-all duration-200 hover:border-blue-300 group ${
+              className={`bg-white rounded-lg border overflow-hidden hover:border-blue-300 group ${
                 'fromProject' in client && client.fromProject 
                   ? 'border-gray-200' 
                   : 'border-blue-200'
               }`}
             >
-              <div className={`p-4 border-b ${
+              <div className={`p-3 border-b ${
                 'fromProject' in client && client.fromProject 
                   ? 'bg-gradient-to-r from-blue-50 to-indigo-50 border-gray-200' 
                   : 'bg-gradient-to-r from-blue-100 to-indigo-100 border-blue-200'
               }`}>
                 <div className="flex items-center justify-between mb-1">
-                  <div className="flex items-center gap-3">
+                  <div className="flex items-center gap-2">
                     <div className={`${
                       'fromProject' in client && client.fromProject 
                         ? 'bg-blue-100 text-blue-600' 
                         : 'bg-blue-200 text-blue-700'
-                    } p-2 rounded-full`}>
-                      <User size={20} />
+                    } p-1.5 rounded-full`}>
+                      <User size={16} />
                     </div>
-                    <h3 className="font-semibold text-gray-800 truncate" title={client.name}>
+                    <h3 className="font-semibold text-gray-800 truncate text-sm" title={client.name}>
                       {client.name}
                     </h3>
                   </div>
                   
                   <div className="flex gap-1">
-                    <button
-                      onClick={() => handleEditClient(client)}
-                      className="text-blue-600 hover:text-blue-800 p-1 rounded-full hover:bg-blue-50"
-                      title="Editar cliente"
-                    >
-                      <Edit size={16} />
-                    </button>
                     {'id' in client && (
                       <button
                         onClick={() => onDeleteClient(client.id)}
-                        className="text-red-600 hover:text-red-800 p-1 rounded-full hover:bg-red-50"
+                        className="text-red-600 hover:text-red-800 p-0.5 rounded-full hover:bg-red-50"
                         title="Excluir cliente"
                       >
-                        <Trash2 size={16} />
+                        <Trash2 size={14} />
                       </button>
                     )}
                   </div>
                 </div>
                 
                 {client.phone && (
-                  <div className="flex items-center gap-2 text-gray-600 ml-10">
-                    <Phone size={16} className="text-gray-400" />
+                  <div className="flex items-center gap-1.5 text-gray-600 ml-7 text-xs">
+                    <Phone size={12} className="text-gray-400" />
                     <a href={`tel:${client.phone}`} className="hover:text-blue-600 transition-colors">
                       {client.phone}
                     </a>
@@ -583,8 +569,8 @@ export function ClientsList({ clients, projects = [], onAddClient, onUpdateClien
                 )}
                 
                 {'email' in client && client.email && (
-                  <div className="flex items-center gap-2 text-gray-600 ml-10 mt-1">
-                    <Mail size={16} className="text-gray-400" />
+                  <div className="flex items-center gap-1.5 text-gray-600 ml-7 mt-0.5 text-xs">
+                    <Mail size={12} className="text-gray-400" />
                     <a href={`mailto:${client.email}`} className="hover:text-blue-600 transition-colors truncate" title={client.email}>
                       {client.email}
                     </a>
@@ -592,8 +578,8 @@ export function ClientsList({ clients, projects = [], onAddClient, onUpdateClien
                 )}
                 
                 {'address' in client && client.address && (
-                  <div className="flex items-center gap-2 text-gray-600 ml-10 mt-1">
-                    <MapPin size={16} className="text-gray-400" />
+                  <div className="flex items-center gap-1.5 text-gray-600 ml-7 mt-0.5 text-xs">
+                    <MapPin size={12} className="text-gray-400" />
                     <span className="truncate" title={client.address}>
                       {client.address}
                     </span>
@@ -601,28 +587,19 @@ export function ClientsList({ clients, projects = [], onAddClient, onUpdateClien
                 )}
               </div>
               
-              <div className="p-4">
-                <div className="flex justify-between items-center mb-2">
-                  <div className="text-sm text-gray-500">Projetos</div>
-                  <div className="font-semibold text-blue-600">{client.projectsCount}</div>
+              <div className="p-2">
+                <div className="flex justify-between items-center mb-1">
+                  <div className="text-xs text-gray-500">Projetos</div>
+                  <div className="font-semibold text-blue-600 text-sm">{client.projectsCount}</div>
                 </div>
                 
-                {'notes' in client && client.notes && (
-                  <div className="mt-3 pt-3 border-t border-gray-100">
-                    <div className="text-xs text-gray-500 mb-1">Observações:</div>
-                    <div className="text-sm text-gray-700 line-clamp-2" title={client.notes}>
-                      {client.notes}
-                    </div>
-                  </div>
-                )}
-                
-                <div className="mt-4 text-right">
+                <div className="mt-2 text-right">
                   <button 
                     onClick={() => handleViewDetails(client)}
-                    className="text-blue-600 hover:text-blue-800 text-sm font-medium inline-flex items-center group-hover:translate-x-1 transition-transform"
+                    className="text-blue-600 hover:text-blue-800 text-xs font-medium inline-flex items-center no-shadow"
                   >
                     Ver detalhes
-                    <ChevronRight size={16} className="ml-1" />
+                    <ChevronRight size={14} className="ml-0.5" />
                   </button>
                 </div>
               </div>
@@ -670,7 +647,7 @@ export function ClientsList({ clients, projects = [], onAddClient, onUpdateClien
                                   onSelectProject(project.id);
                                   setShowDetailsModal(false); // Fechar o modal após clicar
                                 }}
-                                className="hover:text-blue-600 hover:underline text-left"
+                                className="hover:text-blue-600 hover:underline text-left no-shadow"
                                 title="Abrir projeto"
                               >
                                 {project.name || "Sem nome"}

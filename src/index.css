@@ -30,6 +30,37 @@ input[type="checkbox"] {
   accent-color: #e27900;
 }
 
+/* Sombras suaves para campos de formulário e botões */
+input:not([type="checkbox"]):not([type="radio"]), 
+select, 
+textarea {
+  box-shadow: 0 2px 4px rgba(0, 0, 0, 0.08) !important;
+  transition: all 0.2s ease;
+}
+
+input:not([type="checkbox"]):not([type="radio"]):focus, 
+select:focus, 
+textarea:focus {
+  box-shadow: 0 3px 6px rgba(0, 0, 0, 0.15) !important;
+}
+
+
+
+button:not(.no-shadow):hover {
+  box-shadow: 0 4px 8px rgba(0, 0, 0, 0) !important;
+  transform: translateY(-1px);
+}
+
+button:not(.no-shadow):active  {
+  box-shadow: 0 1px 2px rgba(0, 0, 0, 0.15) !important;
+  transform: translateY(0px);
+}
+
+/* Texto com sombra */
+.text-shadow {
+  text-shadow: 1 2px 4px rgba(0, 0, 0, 0.25) !important;
+}
+
 /* Garantir que o cabeçalho não fique fixo apenas em dispositivos móveis */
 @media (max-width: 767px) {
   /* Seletor mais específico para o cabeçalho principal */

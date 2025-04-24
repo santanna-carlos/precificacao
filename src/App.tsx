@@ -14,6 +14,7 @@ import { ProjectsKanban } from './components/ProjectsKanban';
 import { MyWorkshop } from './components/MyWorkshop';
 import { FinancialSummary } from './components/FinancialSummary';
 import { UserProfile } from './components/UserProfile';
+import Dashboard from './components/Dashboard'; // Importar o componente Dashboard
 import { useAuth } from './contexts/AuthContext';
 import { Login } from './components/Login';
 import { Signup } from './components/Signup'; // Importar o componente Signup
@@ -281,13 +282,14 @@ const ClientTrackingView = () => {
 function App() {
   const { user, loading, signOut } = useAuth();
   
-  const [showProjectsKanban, setShowProjectsKanban] = useState(true);
+  const [showProjectsKanban, setShowProjectsKanban] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
   const [showClientsList, setShowClientsList] = useState(false);
   const [showMyWorkshop, setShowMyWorkshop] = useState(false);
   const [showFinancialSummary, setShowFinancialSummary] = useState(false);
   const [showUserProfile, setShowUserProfile] = useState(false);
+  const [showDashboard, setShowDashboard] = useState(true); // Dashboard começa visível
   const [clients, setClients] = useState<Client[]>([]);
   const [isLoadingData, setIsLoadingData] = useState(false);
   
@@ -300,6 +302,7 @@ function App() {
         showMyWorkshop,
         showFinancialSummary,
         showUserProfile,
+        showDashboard,
         activeProjectId
       };
       sessionStorage.setItem('navigationState', JSON.stringify(navigationState));
@@ -311,7 +314,7 @@ function App() {
     if (user) {
       saveNavigationState();
     }
-  }, [showProjectsKanban, showClientsList, showMyWorkshop, showFinancialSummary, showUserProfile, activeProjectId, user]);
+  }, [showProjectsKanban, showClientsList, showMyWorkshop, showFinancialSummary, showUserProfile, showDashboard, activeProjectId, user]);
   
   // Efeito para restaurar o estado de navegação ao carregar a página
   useEffect(() => {
@@ -325,6 +328,7 @@ function App() {
           setShowMyWorkshop(navigationState.showMyWorkshop);
           setShowFinancialSummary(navigationState.showFinancialSummary);
           setShowUserProfile(navigationState.showUserProfile);
+          setShowDashboard(navigationState.showDashboard);
           if (navigationState.activeProjectId) {
             setActiveProjectId(navigationState.activeProjectId);
           }
@@ -342,6 +346,7 @@ function App() {
     setShowMyWorkshop(false);
     setShowFinancialSummary(false);
     setShowUserProfile(false);
+    setShowDashboard(false);
     setShowProjectsKanban(true);
     
     if (window.innerWidth < 768) {
@@ -356,6 +361,7 @@ function App() {
     setShowMyWorkshop(true);
     setShowFinancialSummary(false);
     setShowUserProfile(false);
+    setShowDashboard(false);
     
     if (window.innerWidth < 768) {
       setSidebarOpen(false);
@@ -369,6 +375,7 @@ function App() {
     setShowMyWorkshop(false);
     setShowFinancialSummary(true);
     setShowUserProfile(false);
+    setShowDashboard(false);
     
     if (window.innerWidth < 768) {
       setSidebarOpen(false);
@@ -382,6 +389,21 @@ function App() {
     setShowMyWorkshop(false);
     setShowFinancialSummary(false);
     setShowUserProfile(true);
+    setShowDashboard(false);
+    
+    if (window.innerWidth < 768) {
+      setSidebarOpen(false);
+    }
+  };
+  
+  const handleShowDashboard = () => {
+    setActiveProjectId(null);
+    setShowClientsList(false);
+    setShowProjectsKanban(false);
+    setShowMyWorkshop(false);
+    setShowFinancialSummary(false);
+    setShowUserProfile(false);
+    setShowDashboard(true);
     
     if (window.innerWidth < 768) {
       setSidebarOpen(false);
@@ -611,23 +633,26 @@ function App() {
               setShowMyWorkshop(false);
               setShowFinancialSummary(false);
               setShowUserProfile(false);
+              setShowDashboard(false);
               setActiveProjectId(null);
             } else {
               console.log('Projeto de tracking não encontrado');
-              setShowProjectsKanban(true);
+              setShowProjectsKanban(false);
               setShowClientsList(false);
               setShowMyWorkshop(false);
               setShowFinancialSummary(false);
               setShowUserProfile(false);
+              setShowDashboard(true);
               setActiveProjectId(null);
               alert('O link de acompanhamento que você tentou acessar não é válido ou o projeto não existe mais.');
             }
           } else {
-            setShowProjectsKanban(true);
+            setShowProjectsKanban(false);
             setShowClientsList(false);
             setShowMyWorkshop(false);
             setShowFinancialSummary(false);
             setShowUserProfile(false);
+            setShowDashboard(true);
             setActiveProjectId(null);
           }
         }
@@ -653,11 +678,12 @@ function App() {
   useEffect(() => {
     // Quando o usuário não estiver autenticado (após logout), redefinir os estados para seus valores padrão
     if (!user && !loading) {
-      setShowProjectsKanban(true);
+      setShowProjectsKanban(false);
       setShowClientsList(false);
       setShowMyWorkshop(false);
       setShowFinancialSummary(false);
       setShowUserProfile(false);
+      setShowDashboard(false);
       setActiveProjectId(null);
       setProjects([]);
       setClients([]);
@@ -1309,6 +1335,7 @@ function App() {
       setShowMyWorkshop(false);
       setShowFinancialSummary(false);
       setShowUserProfile(false);
+      setShowDashboard(false);
 
       setProjectName('');
       setClientName('');
@@ -1347,6 +1374,7 @@ function App() {
     setShowMyWorkshop(false);
     setShowFinancialSummary(false);
     setShowUserProfile(false);
+    setShowDashboard(false);
   };
 
   const handleDeleteProject = async (projectId: string) => {
@@ -1373,6 +1401,7 @@ function App() {
             setShowMyWorkshop(false);
             setShowFinancialSummary(false);
             setShowUserProfile(false);
+            setShowDashboard(false);
           }
         }
       } catch (error) {
@@ -1635,6 +1664,7 @@ function App() {
     setShowMyWorkshop(false);
     setShowFinancialSummary(false);
     setShowUserProfile(false);
+    setShowDashboard(false);
     
     if (window.innerWidth < 768) {
       setSidebarOpen(false);
@@ -2111,6 +2141,7 @@ function App() {
                   setShowMyWorkshop(false);
                   setShowFinancialSummary(false);
                   setShowUserProfile(false);
+                  setShowDashboard(false);
                   if (window.innerWidth < 768) {
                     setSidebarOpen(false);
                   }
@@ -2123,15 +2154,22 @@ function App() {
                 onMyWorkshopView={handleShowMyWorkshop}
                 onFinancialSummaryView={handleShowFinancialSummary}
                 onUserProfileView={handleShowUserProfile}
+                onShowDashboard={handleShowDashboard}
               />
             </div>
           </aside>
         
           {/* Conteúdo principal - Rolável, com margem para a barra lateral em desktop */}
           <div className="flex-1 flex flex-col w-full md:ml-64 overflow-auto">
-            <div className="bg-[#506D67] text-white shadow-lg w-full sticky top-0 z-10">
-              <div className="container mx-auto px-2 sm:px-4 py-3 sm:py-6">
-                <div className="flex items-center justify-between mb-6">
+            <div className={`
+              bg-[#506D67] md:bg-gray-100 
+              text-white md:text-gray-800 
+               
+              w-full sticky top-0 z-10
+              ${!activeProjectId && 'md:hidden'}
+            `}>
+              <div className="container mx-auto px-3 sm:px-2 py-3 sm:py-6 md:py-1 md:px-3">
+                <div className="flex items-center justify-between mb-6 md:mb-3">
                   <div className="flex items-center gap-2 sm:gap-3">
                     <button 
                       className="md:hidden mr-1 sm:mr-2 text-white" 
@@ -2141,32 +2179,33 @@ function App() {
                       {sidebarOpen ? <X size={20} className="sm:hidden" /> : <Menu size={20} className="sm:hidden" />}
                       {sidebarOpen ? <X size={24} className="hidden sm:block" /> : <Menu size={24} className="hidden sm:block" />}
                     </button>
-                    <img
+                    <img 
                       src="/imagens/banner2.png"
                       alt="Logo Offi"
-                      className="w-20 h-15 sm:hidden"
+                      className="sm:hidden w-28 h-15 flex justify-center"
                     />
                     <img
                       src="/imagens/banner2.png"
                       alt="Logo Offi"
-                      className="w-40 h-30 hidden sm:block"
+                      className={`w-40 h-30 hidden sm:block ${activeProjectId ? "md:hidden" : ""}`}
                     />
-                    <div className="flex flex-col">
-                      <h1 className="text-2xl font-bold hidden sm:inline">Gestão de Processos e Precificação Inteligente para Marceneiros</h1>
-                      <h1 className="text-lg font-bold sm:hidden">Gestão e Precificação</h1>
-                    </div>
+
                   </div>
                 </div>
                   
                 {activeProjectId && (
                   <div className="w-full">
-                    <div className="flex flex-wrap items-center gap-2">
+                    <div className="sm:border flex flex-wrap items-center gap-3 sm:bg-white sm:rounded-lg sm:shadow-md sm:p-6 sm:mb-3">
+                      {/* Título do container */}
+                      <div className="w-full mb-1">
+                        <h2 className="text-center sm:text-left text-xl font-medium text-white sm:text-gray-900 text-shadow sm:text-shadow-none">Dados do Projeto</h2>
+                      </div>
                       <div className="relative w-full sm:w-auto sm:max-w-[300px]">
                         <input
                           type="text"
                           value={clientName}
                           onChange={handleClientNameChange}
-                          className="px-2 sm:px-3 py-1 h-9 rounded text-gray-800 font-medium text-sm sm:text-base w-full"
+                          className="px-3 py-2 h-10 border border-gray-200 rounded-md text-gray-800 font-medium text-base sm:text-base w-full sm:w-auto sm:max-w-[200px]"
                           placeholder="Nome do Cliente"
                           ref={clientInputRef}
                           onFocus={() => {
@@ -2202,52 +2241,54 @@ function App() {
                         onChange={(e) => {
                           setProjectName(e.target.value);
                         }}
-                        className="px-2 sm:px-3 py-1 h-9 rounded text-gray-800 font-medium text-sm sm:text-base w-full sm:w-auto sm:max-w-[300px]"
+                        className="px-3 py-2 h-10 border border-gray-200 rounded-md text-gray-800 font-medium text-base sm:text-base w-full sm:w-auto sm:max-w-[200px]"
                         placeholder="Nome do Projeto"
                       />
                       <input
                         type="tel"
                         value={contactPhone}
                         onChange={handleContactPhoneChange}
-                        className="px-2 sm:px-3 py-1 h-9 rounded text-gray-800 font-medium text-sm sm:text-base w-full sm:w-auto sm:max-w-[300px]"
+                        className="px-3 py-2 h-10 border border-gray-200 rounded-md text-gray-800 font-medium text-base sm:text-base w-full sm:max-w-[170px]"
                         placeholder="Celular"
                       />
                       <input
                         type="date"
                         value={projectDate}
                         onChange={handleProjectDateChange}
-                        className="px-2 sm:px-3 py-1 h-9 rounded text-gray-800 font-medium text-sm sm:text-base w-full sm:w-auto"
+                        className="px-3 py-2 h-10 border border-gray-200 rounded-md text-gray-800 font-medium text-base sm:text-base w-full sm:max-w-[170px]"
                         title="Data de Criação"
                       />
-                      <button
-                        className="flex items-center justify-center gap-2 px-4 py-1 h-9 bg-[#FFA136] text-white rounded-md hover:bg-[#FF8800] transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed"
-                        onClick={handleSaveProject}
-                        disabled={isSaving}
-                      >
-                        {isSaving ? (
-                          <>
-                            <Loader2 size={20} className="animate-spin" />
-                            Salvando...
-                          </>
-                        ) : (
-                          <>
-                            <Save size={20} />
-                            Salvar Projeto
-                          </>
-                        )}
-                      </button>
-                      <button
-                        className="flex items-center justify-center gap-2 px-4 py-1 h-9 bg-[#2F524B] text-white rounded-md hover:bg-green-800 transition-colors"
-                        onClick={handleDuplicateProject}
-                        title="Duplicar projeto"
-                      >
-                        <Copy size={20} />
-                        <span className="hidden sm:inline">Duplicar</span>
-                      </button>
+                      <div className="flex flex-row w-full gap-2 sm:contents">
+                        <button
+                          className="flex items-center justify-center gap-2 px-4 py-1 h-10 bg-[#FFA136] text-base text-white rounded-md hover:bg-[#FF8800] transition-colors disabled:bg-gray-300 disabled:cursor-not-allowed flex-1 sm:flex-initial"
+                          onClick={handleSaveProject}
+                          disabled={isSaving}
+                        >
+                          {isSaving ? (
+                            <>
+                              <Loader2 size={18} className="animate-spin" />
+                              Salvando...
+                            </>
+                          ) : (
+                            <>
+                              <Save size={18} />
+                              Salvar
+                            </>
+                          )}
+                        </button>
+                        <button
+                          className="flex items-center justify-center px-4 py-1 h-10 bg-[#2F524B] text-sm text-white rounded-md hover:bg-green-800 transition-colors flex-1 sm:flex-initial sm:w-auto"
+                          onClick={handleDuplicateProject}
+                          title="Duplicar projeto"
+                        >
+                          <Copy size={18} />
+                          <span className="hidden sm:inline"></span>
+                        </button>
+                      </div>
                       {hasUnsavedChanges && activeProjectId && (
-                        <div className="flex items-center text-amber-500 animate-pulse transition-opacity duration-1000 bg-gray-800 px-3 py-1 h-9 rounded-md">
-                          <AlertCircle size={16} className="mr-1" />
-                          <span className="text-xs sm:text-sm">Alterações não salvas</span>
+                        <div className="flex items-center text-sm text-white animate-pulse transition-opacity duration-1000 bg-gray-600 px-3 py-1 h-10 rounded-md">
+                          <AlertCircle size={18} className="" />
+                          <span className="text-sm"></span>
                         </div>
                       )}
                     </div>
@@ -2257,19 +2298,38 @@ function App() {
             </div>
 
             {activeProjectId && (
-              <ProjectStagesBar 
-                stages={projectStages} 
-                onChange={handleStageChange} 
-                projectId={activeProjectId!}
-                projectName={projectName}
-                clientName={clientName}
-                onUpdateProject={handleUpdateProject}
-                estimatedCompletionDate={estimatedCompletionDate}
-              />
+              <>
+                <hr className="border-t border-gray-300 w-full my-4" />
+                <ProjectStagesBar 
+                  stages={projectStages} 
+                  onChange={handleStageChange} 
+                  projectId={activeProjectId!}
+                  projectName={projectName}
+                  clientName={clientName}
+                  onUpdateProject={handleUpdateProject}
+                  estimatedCompletionDate={estimatedCompletionDate}
+                />
+              </>
             )}
-
+            <span className=""></span>
             <div className="flex-1 p-2 sm:p-4">
-              {showMyWorkshop ? (
+              {showDashboard ? (
+                <Dashboard 
+                  projects={projects}
+                  clients={clients}
+                  workshopSettings={workshopSettings}
+                  onSelectProject={(projectId) => {
+                    handleSelectProject(projectId);
+                    setShowClientsList(false);
+                    setShowProjectsKanban(false);
+                    setShowMyWorkshop(false);
+                    setShowFinancialSummary(false);
+                    setShowUserProfile(false);
+                    setShowDashboard(false);
+                  }}
+                  onShowKanban={handleShowProjectsKanban}
+                />
+              ) : showMyWorkshop ? (
                 <MyWorkshop 
                   workshopSettings={workshopSettings}
                   onSaveSettings={handleSaveWorkshopSettings}
@@ -2288,6 +2348,7 @@ function App() {
                     setShowMyWorkshop(false);
                     setShowFinancialSummary(false);
                     setShowUserProfile(false);
+                    setShowDashboard(false);
                   }}
                 />
               ) : showFinancialSummary ? (
@@ -2301,6 +2362,7 @@ function App() {
                     setShowMyWorkshop(false);
                     setShowFinancialSummary(false);
                     setShowUserProfile(false);
+                    setShowDashboard(false);
                   }} 
                   onDeleteProject={handleDeleteProject}
                 />
@@ -2316,6 +2378,7 @@ function App() {
                     setShowMyWorkshop(false);
                     setShowFinancialSummary(false);
                     setShowUserProfile(false);
+                    setShowDashboard(false);
                   }} 
                   onDeleteProject={handleDeleteProject}
                 />
@@ -2395,7 +2458,7 @@ function App() {
                       {!projectStages.projetoTecnico?.completed && (
                         <div className="flex justify-center sm:justify-end mb-4">
                           <button
-                            className="flex items-center justify-center gap-2 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors w-full sm:w-auto"
+                            className="flex items-center justify-center gap-2 px-4 py-2 bg-red-600 text-white rounded-md hover:bg-red-700 transition-colors w-center sm:w-auto"
                             onClick={handleClearAllExpenses}
                             title="Excluir todas as despesas"
                           >
@@ -2495,19 +2558,21 @@ function App() {
                   </div>
                 </div>
               ) : (
-                <div className="h-full flex items-center justify-center">
-                  <div className="text-center">
-                    <h2 className="text-2xl font-semibold text-gray-700 mb-4">Nenhum projeto selecionado</h2>
-                    <p className="text-gray-500 mb-6">Crie um novo projeto ou selecione um existente para começar</p>
-                    <button
-                      className="flex items-center justify-center gap-2 px-6 py-3 bg-blue-600 text-white rounded-md hover:bg-blue-700 transition-colors"
-                      onClick={handleCreateProject}
-                    >
-                      <Plus size={20} />
-                      Criar Novo Projeto
-                    </button>
-                  </div>
-                </div>
+                <Dashboard 
+                  projects={projects}
+                  clients={clients}
+                  workshopSettings={workshopSettings}
+                  onSelectProject={(projectId) => {
+                    handleSelectProject(projectId);
+                    setShowClientsList(false);
+                    setShowProjectsKanban(false);
+                    setShowMyWorkshop(false);
+                    setShowFinancialSummary(false);
+                    setShowUserProfile(false);
+                    setShowDashboard(false);
+                  }}
+                  onShowKanban={handleShowProjectsKanban}
+                />
               )}
             </div>
           </div>
