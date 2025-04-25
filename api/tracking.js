@@ -21,7 +21,7 @@ export const config = {
             <title>Rastreamento de Projeto | Offi</title>
             <meta property="og:title" content="Acompanhe seu projeto com a Offi" />
             <meta property="og:description" content="Veja o andamento da produção do seu móvel planejado." />
-            <meta property="og:image" content="https://app.useoffi.com/images/tracking-og.png" />
+            <meta property="og:image" content="https://app.useoffi.com/imagens/tracking-og.png" />
             <meta property="og:url" content="${fullUrl}" />
             <meta name="twitter:card" content="summary_large_image" />
           </head>
