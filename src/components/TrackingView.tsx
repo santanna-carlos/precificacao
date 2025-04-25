@@ -2,12 +2,15 @@ import React, { useEffect, useState } from 'react';
 import { Check, Loader2, MinusCircle, AlertTriangle, CheckCircle2, X, Clock, Circle } from 'lucide-react';
 import { PROJECT_STAGES, ProjectStages, Project } from '../types';
 import { supabase } from '../supabase';
+import { useParams } from "react-router-dom";
+
 
 interface TrackingViewProps {
   projectId?: string;
 }
 
 export const TrackingView: React.FC<TrackingViewProps> = ({ projectId }) => {
+  const params = useParams<{ id: string }>();
   const [project, setProject] = useState<Project | null>(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState<string | null>(null);
@@ -38,12 +41,10 @@ export const TrackingView: React.FC<TrackingViewProps> = ({ projectId }) => {
   };
 
   useEffect(() => {
-    let id = projectId;
-    if (!id) {
-      const params = new URLSearchParams(window.location.search);
-      id = params.get('tracking') || undefined;
-    }
-    if (!id) {
+    // Usar projectId da prop se disponível, senão usar o id do parâmetro de rota
+    const projectIdToUse = projectId || params.id;
+    
+    if (!projectIdToUse) {
       setError('Link inválido ou projeto não especificado.');
       setLoading(false);
       return;
@@ -51,23 +52,32 @@ export const TrackingView: React.FC<TrackingViewProps> = ({ projectId }) => {
 
     const fetchProject = async () => {
       setLoading(true);
-      const { data, error } = await supabase
-        .from('projects')
-        .select('*')
-        .eq('id', id)
-        .single();
+      try {
+        const { data, error } = await supabase
+          .from('projects')
+          .select('*')
+          .eq('id', projectIdToUse)
+          .single();
 
-      if (error || !data) {
-        setError('Projeto não encontrado.');
+        if (error) throw error;
+        
+        if (!data) {
+          setError('Projeto não encontrado.');
+          return;
+        }
+        
+        setProject(data as Project);
+        setError(null);
+      } catch (err) {
+        console.error('Erro ao buscar projeto:', err);
+        setError('Erro ao buscar detalhes do projeto. Verifique se o link está correto.');
+      } finally {
         setLoading(false);
-        return;
       }
-      setProject(data as Project);
-      setLoading(false);
     };
 
     fetchProject();
-  }, [projectId]);
+  }, [projectId, params.id]);
 
   useEffect(() => {
     // Criar um elemento de estilo
