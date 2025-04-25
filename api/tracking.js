@@ -10,7 +10,7 @@ export const config = {
     const isBot = /bot|facebook|whatsapp|twitter|linkedin|slack|telegram|discord/i.test(userAgent)
     const isTracking = /^\/tracking\/[a-z0-9\-]{36}$/i.test(pathname)
   
-    if (isTracking && isBot) {
+    if (isTracking) {
       const fullUrl = request.url
       return new Response(
         `
@@ -40,7 +40,10 @@ export const config = {
         }
       )
     }
-  
+
+    console.log("Edge Function acionada para:", request.url);
+    console.log("User-Agent:", request.headers.get("user-agent"));
+    
     // Se não for bot ou não for rota de tracking, continua normalmente
     return fetch(request)
   }
