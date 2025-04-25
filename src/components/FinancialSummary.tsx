@@ -6,6 +6,9 @@ import {
 } from 'recharts';
 import { DollarSign, TrendingUp, Calendar, BarChart3, ChevronDown } from 'lucide-react';
 
+console.log("Renderizando FinancialSummary")
+
+
 interface FinancialSummaryProps {
   projects: Project[];
   workshopSettings: WorkshopSettings;
@@ -393,6 +396,74 @@ export function FinancialSummary({ projects, workshopSettings, onBack, onDeleteP
   const averageTicket = totalProjects > 0 ? totalRevenue / totalProjects : 0;
   const annualAverageTicket = annualProjects > 0 ? annualRevenue / annualProjects : 0;
 
+  // Calcular o lucro total considerando o tipo de preço definido em cada projeto
+  const totalProfit = useMemo(() => {
+    return completedProjects.reduce((sum, project) => {
+      // Usar o preço correto com base no tipo de preço definido
+      const price = getProjectPrice(project);
+      // Calcular os componentes de custo
+      const cost = project.totalCost || 0;
+      // Lucro = preço - custo
+      return sum + (price - cost);
+    }, 0);
+  }, [completedProjects, getProjectPrice]);
+  
+  // Calcular o lucro anual (apenas para o ano selecionado)
+  const annualProfit = useMemo(() => {
+    return completedProjects.reduce((sum, project) => {
+      let completionDate: Date | null = null;
+      
+      if (project.stages?.instalacao?.date) {
+        completionDate = new Date(project.stages.instalacao.date);
+      } else if (project.stages?.instalacao?.completed) {
+        completionDate = new Date();
+      }
+      
+      if (completionDate && completionDate.getFullYear() === selectedYear) {
+        // Usar o preço correto com base no tipo de preço definido
+        const price = getProjectPrice(project);
+        // Calcular os componentes de custo
+        const cost = project.totalCost || 0;
+        // Lucro = preço - custo
+        return sum + (price - cost);
+      }
+      
+      return sum;
+    }, 0);
+  }, [completedProjects, selectedYear, getProjectPrice]);
+
+  // Calcular a soma total das diferenças (realCost) para todos os projetos concluídos
+  const totalRealCostDifference = useMemo(() => {
+    return completedProjects.reduce((sum, project) => {
+      // Verificar se o projeto tem um valor de realCost definido no estágio de instalação
+      const realCost = project.stages?.instalacao?.realCost;
+      // Adicionar à soma apenas se o valor existir
+      return sum + (realCost !== undefined ? Number(realCost) : 0);
+    }, 0);
+  }, [completedProjects]);
+  
+  // Calcular a soma das diferenças (realCost) apenas para projetos concluídos no ano selecionado
+  const annualRealCostDifference = useMemo(() => {
+    return completedProjects.reduce((sum, project) => {
+      let completionDate: Date | null = null;
+      
+      if (project.stages?.instalacao?.date) {
+        completionDate = new Date(project.stages.instalacao.date);
+      } else if (project.stages?.instalacao?.completed) {
+        completionDate = new Date();
+      }
+      
+      if (completionDate && completionDate.getFullYear() === selectedYear) {
+        // Verificar se o projeto tem um valor de realCost definido no estágio de instalação
+        const realCost = project.stages?.instalacao?.realCost;
+        // Adicionar à soma apenas se o valor existir
+        return sum + (realCost !== undefined ? Number(realCost) : 0);
+      }
+      
+      return sum;
+    }, 0);
+  }, [completedProjects, selectedYear]);
+
   return (
     <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-4">
       <div className="mb-6">
@@ -437,8 +508,18 @@ export function FinancialSummary({ projects, workshopSettings, onBack, onDeleteP
         </p>
       </div>
 
+      {/* Botão Ver Total/Ver Anual centralizado */}
+      <div className="w-full flex justify-center mb-4">
+        <button
+          className={`px-4 py-2 rounded font-semibold shadow-sm border border-indigo-200 bg-white text-indigo-700 hover:bg-indigo-50 transition-colors duration-150`}
+          onClick={() => setShowAnnualRevenue((prev) => !prev)}
+        >
+          {showAnnualRevenue ? 'Ver Total' : 'Ver Anual'}
+        </button>
+      </div>
+
       {/* Cards de estatísticas */}
-      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4 mb-8">
+      <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4 mb-8">
         <div className="bg-indigo-50 rounded-lg p-2 sm:p-2 border border-indigo-100">
           <div className="flex items-center mb-2 sm:py-2">
             <div className="bg-indigo-500 rounded-full p-2 mr-2">
@@ -475,14 +556,6 @@ export function FinancialSummary({ projects, workshopSettings, onBack, onDeleteP
               </div>
             </div>
           </div>
-          <div className="flex justify-center mb-1 mt-1 sm:justify-start md:justify-center">
-            <button 
-              className="text-xs px-3 py-1.5 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-md"
-              onClick={() => setShowAnnualRevenue(!showAnnualRevenue)}
-            >
-              {showAnnualRevenue ? 'Ver Total' : 'Ver Anual'}
-            </button>
-          </div>
         </div>
         
         <div className="bg-green-50 rounded-lg p-3 sm:p-4 border border-green-100">
@@ -493,7 +566,7 @@ export function FinancialSummary({ projects, workshopSettings, onBack, onDeleteP
               </div>
               <div>
                 <p className="text-sm text-green-700">Projetos {showAnnualRevenue ? `${selectedYear}` : 'Total'}</p>
-                <p className="text-xl text-green-900 text-center">{showAnnualRevenue ? annualProjects : totalProjects}</p>
+                <p className="text-xl text-green-900 text-left">{showAnnualRevenue ? annualProjects : totalProjects}</p>
               </div>
             </div>
           </div>
@@ -509,6 +582,39 @@ export function FinancialSummary({ projects, workshopSettings, onBack, onDeleteP
                 <p className="text-sm text-purple-700">Ticket Médio {showAnnualRevenue ? `${selectedYear}` : 'Total'}</p>
                 <p className="text-xl text-purple-900">
                   {(showAnnualRevenue ? annualAverageTicket : averageTicket).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+        
+        <div className="bg-amber-50 rounded-lg p-3 sm:p-4 border border-amber-100">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center">
+              <div className="bg-amber-500 rounded-full p-2 mr-2">
+                <DollarSign size={18} className="text-white" />
+              </div>
+              <div>
+                <p className="text-sm text-amber-700">Lucro {showAnnualRevenue ? `${selectedYear}` : 'Total'}</p>
+                <p className="text-xl text-amber-900">
+                  {(showAnnualRevenue ? annualProfit : totalProfit).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                </p>
+              </div>
+            </div>
+          </div>
+        </div>
+
+        {/* Novo card para a soma das diferenças (realCost) */}
+        <div className="bg-teal-50 rounded-lg p-3 sm:p-4 border border-teal-100">
+          <div className="flex items-center justify-between mb-2">
+            <div className="flex items-center">
+              <div className="bg-teal-500 rounded-full p-2 mr-2">
+                <BarChart3 size={18} className="text-white" />
+              </div>
+              <div>
+                <p className="text-sm text-teal-700">Diferença {showAnnualRevenue ? `${selectedYear}` : 'Total'}</p>
+                <p className="text-xl text-teal-900">
+                  {(showAnnualRevenue ? annualRealCostDifference : totalRealCostDifference).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
                 </p>
               </div>
             </div>

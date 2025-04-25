@@ -5,6 +5,8 @@ import { supabase } from '../supabase';
 import { Link as LinkIcon } from 'lucide-react';
 import { getTrackingLink } from "../utils/tracking";
 
+console.log("Renderizando ProjectStagesBar")
+
 
 interface ProjectStagesBarProps {
   stages: ProjectStages;
@@ -26,7 +28,7 @@ export const ProjectStagesBar: React.FC<ProjectStagesBarProps> = ({
   onUpdateProject 
 }) => {
   // 1. Todos os hooks useState no início do componente
-  const [isExpandedMobile, setIsExpandedMobile] = useState(false);
+  const [isExpandedMobile, setIsExpandedMobile] = useState(true);
   const [isExpandedDesktop, setIsExpandedDesktop] = useState(true); 
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [showCopyConfirmation, setShowCopyConfirmation] = useState(false);
@@ -44,6 +46,19 @@ export const ProjectStagesBar: React.FC<ProjectStagesBarProps> = ({
   const [currentViewDate, setCurrentViewDate] = useState(() => new Date());
   // Novo estado para armazenar projetos em andamento
   const [inProgressProjects, setInProgressProjects] = useState<Project[]>([]);
+  // Novo estado para armazenar temporariamente o valor da diferença
+  const [tempRealCost, setTempRealCost] = useState<number | undefined>(undefined);
+  // Flag para indicar se o valor foi alterado e precisa ser salvo
+  const [realCostChanged, setRealCostChanged] = useState(false);
+  // Novo estado para controlar o overlay de carregamento global
+  const [isSaving, setIsSaving] = useState(false);
+
+  // Carregar o valor inicial da diferença
+  useEffect(() => {
+    if (stages?.instalacao?.realCost !== undefined) {
+      setTempRealCost(stages.instalacao.realCost);
+    }
+  }, [stages?.instalacao?.realCost]);
 
   // 2. Todos os useEffect juntos, após todos os useState
   // Sincronizar com propEstimatedCompletionDate
@@ -193,6 +208,26 @@ export const ProjectStagesBar: React.FC<ProjectStagesBarProps> = ({
     };
   }, []);
 
+  // Nova função para atualizar o valor temporário
+  const handleTempRealCostChange = (value: string) => {
+    const numValue = value === '' ? 0 : Number(value);
+    setTempRealCost(numValue);
+    setRealCostChanged(true);
+  };
+
+  // Nova função para salvar a diferença no banco de dados
+  const saveRealCost = () => {
+    if (realCostChanged && tempRealCost !== undefined) {
+      // Ativar overlay de carregamento global
+      setIsSaving(true);
+      
+      handleStageChange('instalacao', 'realCost', tempRealCost);
+      setRealCostChanged(false);
+      
+      // O overlay será desativado no callback do handleStageChange
+    }
+  };
+
   // 3. Valores derivados e funções após todos os hooks
   const regularStages = PROJECT_STAGES.filter(stage => stage.id !== 'projetoCancelado');
   const cancelStage = PROJECT_STAGES.find(stage => stage.id === 'projetoCancelado');
@@ -272,23 +307,28 @@ export const ProjectStagesBar: React.FC<ProjectStagesBarProps> = ({
         return; 
       }
 
+      // Ativar overlay de carregamento global
+      setIsSaving(true);
+      
       // Set loading state
       setIsLoading(true);
       setLoadingStageId(stageKey as string);
+    } else if (field === 'realCost' || field === 'cancellationReason' || field === 'completionNotes') {
+      // Ativar overlay para outros campos importantes que salvam no banco
+      setIsSaving(true);
     }
     
     onChange(stageKey, field, value);
     setErrorMessage(null);
 
-    // Ajustar o tempo de exibição do indicador de carregamento para garantir
-    // que ele permaneça visível durante todas as operações remotas
-    if (field === 'completed') {
-      // Tempo estimado baseado na complexidade das operações que observamos no App.tsx
-      // que inclui várias chamadas ao localStorage e ao Supabase
+    // Ajustar o tempo de exibição do indicador de carregamento
+    if (field === 'completed' || field === 'realCost' || field === 'cancellationReason' || field === 'completionNotes') {
+      // Tempo estimado baseado na complexidade das operações
       setTimeout(() => {
         setIsLoading(false);
         setLoadingStageId(null);
-      }, 1500); // Ajustado para 1,5 segundos conforme solicitação
+        setIsSaving(false); // Desativar overlay global
+      }, 1500);
     }
   };
 
@@ -298,6 +338,9 @@ export const ProjectStagesBar: React.FC<ProjectStagesBarProps> = ({
     setEstimatedCompletionDate(newDate);
     
     if (onUpdateProject && projectId) {
+      // Ativar overlay de carregamento global
+      setIsSaving(true);
+      
       console.log('Atualizando data prevista no Supabase e localStorage');
       
       try {
@@ -308,31 +351,39 @@ export const ProjectStagesBar: React.FC<ProjectStagesBarProps> = ({
         const { data, error } = await supabase
           .from('projects')
           .update({ estimated_completion_date: valueToSend })
-          .eq('id', projectId)
-          .select();
-        
+          .eq('id', projectId);
+          
         if (error) {
           console.error('Erro ao atualizar data prevista no Supabase:', error);
-          setErrorMessage('Erro ao atualizar data prevista. Por favor, tente novamente.');
+          setErrorMessage('Erro ao atualizar data prevista no Supabase. Por favor, tente novamente.');
         } else {
-          console.log('Data prevista atualizada com sucesso no Supabase:', data);
+          console.log('Data prevista atualizada no Supabase com sucesso:', data);
           
-          // Atualizar também no localStorage para garantir consistência
-          const cachedProjects = JSON.parse(localStorage.getItem('cachedProjects') || '[]');
-          const updatedProjects = cachedProjects.map((p: any) => 
-            p.id === projectId 
-              ? { ...p, estimatedCompletionDate: newDate, lastModified: new Date().toISOString() } 
-              : p
-          );
-          localStorage.setItem('cachedProjects', JSON.stringify(updatedProjects));
-          console.log('Data prevista atualizada no localStorage (cachedProjects)');
-          
-          // Chamar o método original para atualizar o estado React
-          onUpdateProject(projectId, 'estimatedCompletionDate', newDate);
+          // Atualizar também no localStorage para manter sincronizado
+          try {
+            const cachedProjects = JSON.parse(localStorage.getItem('cachedProjects') || '[]');
+            const updatedProjects = cachedProjects.map((p: any) => 
+              p.id === projectId 
+                ? { ...p, estimatedCompletionDate: newDate }
+                : p
+            );
+            localStorage.setItem('cachedProjects', JSON.stringify(updatedProjects));
+            console.log('Data prevista atualizada no localStorage (cachedProjects)');
+            
+            // Chamar o método original para atualizar o estado React
+            onUpdateProject(projectId, 'estimatedCompletionDate', newDate);
+          } catch (err) {
+            console.error('Erro ao atualizar localStorage:', err);
+          }
         }
       } catch (err) {
         console.error('Erro ao atualizar data prevista:', err);
         setErrorMessage('Erro ao atualizar data prevista. Por favor, tente novamente.');
+      } finally {
+        // Desativar overlay de carregamento global
+        setTimeout(() => {
+          setIsSaving(false);
+        }, 1000);
       }
     }
   };
@@ -362,7 +413,7 @@ export const ProjectStagesBar: React.FC<ProjectStagesBarProps> = ({
             const cachedProjects = JSON.parse(localStorage.getItem('cachedProjects') || '[]');
             const updatedProjects = cachedProjects.map((p: any) => 
               p.id === projectId 
-                ? { ...p, estimatedCompletionDate: date, lastModified: new Date().toISOString() } 
+                ? { ...p, estimatedCompletionDate: date }
                 : p
             );
             localStorage.setItem('cachedProjects', JSON.stringify(updatedProjects));
@@ -475,7 +526,7 @@ export const ProjectStagesBar: React.FC<ProjectStagesBarProps> = ({
     const projectsForCurrentMonth = inProgressProjects.filter(project => {
       if (!project.estimatedCompletionDate) return false;
       
-      const projectDate = getLocalDate(project.estimatedCompletionDate);
+      const projectDate = getLocalDate(project.estimatedCompletionDate || '');
       return projectDate.getMonth() === currentMonth && projectDate.getFullYear() === currentYear;
     });
     
@@ -586,6 +637,11 @@ export const ProjectStagesBar: React.FC<ProjectStagesBarProps> = ({
   // 5. Renderização - sem condicionais que possam afetar a estrutura dos componentes
   return (
     <div className="bg-gray-100 border-gray-300 py-3 px-2 sm:px-4">
+      {isSaving && (
+        <div className="fixed inset-0 bg-black bg-opacity-50 z-50 flex items-center justify-center">
+          <Loader2 size={40} className="animate-spin text-white" />
+        </div>
+      )}
       <div className="container mx-auto">
         <div className="flex justify-between items-center mb-2">
           <div className="text-base sm:text-base md:text-xl font-medium text-gray-900 ml-1">Etapas do Projeto:</div>
@@ -746,22 +802,30 @@ export const ProjectStagesBar: React.FC<ProjectStagesBarProps> = ({
                     {stage.id === 'instalacao' && stageData?.completed && (
                       <div className="mt-2 bg-green-50 p-2 rounded-md border border-green-200">
                         <label htmlFor={`real-cost-${stage.id}-mobile`} className="block text-xs font-medium text-green-700 mb-1">
-                          Valor real gasto (R$):
+                          Diferença (R$):
                         </label>
                         <input
                           id={`real-cost-${stage.id}-mobile`}
                           type="text"
                           inputMode="decimal"
                           placeholder="0.00"
-                          value={stageData?.realCost === undefined ? '' : stageData?.realCost}
+                          value={tempRealCost === undefined ? '' : tempRealCost}
                           onChange={(e) => {
                             const value = e.target.value;
-                            if (value === '' || /^\d*\.?\d*$/.test(value)) {
-                              handleStageChange(stageKey, 'realCost', value === '' ? 0 : Number(value));
+                            if (value === '' || /^-?\d*\.?\d*$/.test(value)) {
+                              handleTempRealCostChange(value);
                             }
                           }}
-                          className="w-full text-xs border border-green-300 rounded-md p-1 bg-white focus:outline-none focus:ring-1 focus:ring-green-500"
+                          className="w-20 text-xs border border-green-300 rounded-md p-1 bg-white focus:outline-none focus:ring-1 focus:ring-green-500"
                         />
+                        {realCostChanged && (
+                          <button
+                            className="mt-2 bg-green-500 hover:bg-green-600 text-white px-3 py-1.5 rounded text-xs font-medium flex items-center justify-center"
+                            onClick={saveRealCost}
+                          >
+                            Salvar
+                          </button> //versão mobile
+                        )}
                       </div>
                     )}
                   </div>
@@ -887,23 +951,31 @@ export const ProjectStagesBar: React.FC<ProjectStagesBarProps> = ({
                       <div className="mt-2 bg-green-50 p-2 rounded-md border border-green-200">
                         <div className="flex flex-wrap items-center gap-2">
                           <label htmlFor={`real-cost-${stage.id}-desktop`} className="text-xs font-medium text-green-700 whitespace-nowrap">
-                            Custo Total Real (R$):
+                            Diferença (R$):
                           </label>
                           <input
                             id={`real-cost-${stage.id}-desktop`}
                             type="text"
                             inputMode="decimal"
                             placeholder="0.00"
-                            value={stageData?.realCost === undefined ? '' : stageData?.realCost}
+                            value={tempRealCost === undefined ? '' : tempRealCost}
                             onChange={(e) => {
                               const value = e.target.value;
-                              if (value === '' || /^\d*\.?\d*$/.test(value)) {
-                                handleStageChange(stageKey, 'realCost', value === '' ? 0 : Number(value));
+                              if (value === '' || /^-?\d*\.?\d*$/.test(value)) {
+                                handleTempRealCostChange(value);
                               }
                             }}
                             className="w-24 text-xs border border-green-300 rounded-md p-1 bg-white focus:outline-none focus:ring-1 focus:ring-green-500"
                           />
                         </div>
+                        {realCostChanged && (
+                          <button
+                            className="mt-2 bg-green-500 hover:bg-green-600 text-white px-3 py-1.5 rounded text-xs font-medium flex items-center justify-center"
+                            onClick={saveRealCost}
+                          >
+                            Salvar
+                          </button> //versão desktop
+                        )}
                       </div>
                     )}
                   </div>
@@ -979,23 +1051,31 @@ export const ProjectStagesBar: React.FC<ProjectStagesBarProps> = ({
                       <div className="mt-2 bg-green-50 p-2 rounded-md border border-green-200">
                         <div className="flex flex-wrap items-center gap-2">
                           <label htmlFor={`real-cost-${stage.id}-desktop`} className="text-xs font-medium text-green-700 whitespace-nowrap">
-                            Custo Total Real (R$):
+                            Diferença (R$):
                           </label>
                           <input
                             id={`real-cost-${stage.id}-desktop`}
                             type="text"
                             inputMode="decimal"
                             placeholder="0.00"
-                            value={stageData?.realCost === undefined ? '' : stageData?.realCost}
+                            value={tempRealCost === undefined ? '' : tempRealCost}
                             onChange={(e) => {
                               const value = e.target.value;
-                              if (value === '' || /^\d*\.?\d*$/.test(value)) {
-                                handleStageChange(stageKey, 'realCost', value === '' ? 0 : Number(value));
+                              if (value === '' || /^-?\d*\.?\d*$/.test(value)) {
+                                handleTempRealCostChange(value);
                               }
                             }}
-                            className="w-24 text-xs border border-green-300 rounded-md p-1 bg-white focus:outline-none focus:ring-1 focus:ring-green-500"
+                            className="w-20 text-xs border border-green-300 rounded-md p-1 bg-white focus:outline-none focus:ring-1 focus:ring-green-500"
                           />
                         </div>
+                        {realCostChanged && (
+                          <button
+                            className="mt-2 bg-green-500 hover:bg-green-600 text-white px-3 py-1.5 rounded text-xs font-medium flex items-center justify-center"
+                            onClick={saveRealCost}
+                          >
+                            Salvar
+                          </button> //versão desktop
+                        )}
                       </div>
                     )}
                   </div>
@@ -1052,70 +1132,6 @@ export const ProjectStagesBar: React.FC<ProjectStagesBarProps> = ({
             )}
           </div>
         </div>
-        
-        {stages.instalacao?.completed && !stages.projetoCancelado?.completed && (
-          <>
-            {isExpandedDesktop && (
-              <div className="hidden md:block mt-4 p-3 bg-gray-50 border border-gray-200 rounded-md">
-                <div className="flex flex-col items-center">
-                  <div className="flex items-center gap-3 mb-2">
-                    <label htmlFor="has-completion-notes-desktop" className="text-sm font-medium text-gray-700">
-                      Adicionar nota sobre finalização?
-                    </label>
-                    <input
-                      type="checkbox"
-                      id="has-completion-notes-desktop"
-                      checked={stages.instalacao?.hasCompletionNotes || false}
-                      onChange={(e) => handleStageChange('instalacao', 'hasCompletionNotes', e.target.checked)}
-                      className="h-4 w-4 text-blue-600 rounded focus:ring-blue-500"
-                    />
-                  </div>
-                  
-                  {stages.instalacao?.hasCompletionNotes && (
-                    <div className="mt-2 w-full">
-                      <textarea
-                        rows={3}
-                        placeholder="Escreva aqui suas observações sobre a conclusão do projeto..."
-                        value={stages.instalacao?.completionNotes || ''}
-                        onChange={(e) => handleStageChange('instalacao', 'completionNotes', e.target.value)}
-                        className="w-full p-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-                      />
-                    </div>
-                  )}
-                </div>
-              </div>
-            )}
-            
-            {isExpandedMobile && (
-              <div className="md:hidden mt-4 p-3 bg-gray-50 border border-gray-200 rounded-md">
-                <div className="flex items-center justify-between mb-2">
-                  <label htmlFor="has-completion-notes-mobile" className="text-sm font-medium text-gray-700">
-                    Adicionar nota sobre finalização?
-                  </label>
-                  <input
-                    type="checkbox"
-                    id="has-completion-notes-mobile"
-                    checked={stages.instalacao?.hasCompletionNotes || false}
-                    onChange={(e) => handleStageChange('instalacao', 'hasCompletionNotes', e.target.checked)}
-                    className="h-4 w-4 text-blue-600 rounded focus:ring-blue-500"
-                  />
-                </div>
-                
-                {stages.instalacao?.hasCompletionNotes && (
-                  <div className="mt-2">
-                    <textarea
-                      rows={3}
-                      placeholder="Escreva aqui suas observações sobre a conclusão do projeto..."
-                      value={stages.instalacao?.completionNotes || ''}
-                      onChange={(e) => handleStageChange('instalacao', 'completionNotes', e.target.value)}
-                      className="w-full p-2 text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
-                    />
-                  </div>
-                )}
-              </div>
-            )}
-          </>
-        )}
       </div>
     </div>
   );

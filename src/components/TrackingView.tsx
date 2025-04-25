@@ -4,6 +4,8 @@ import { PROJECT_STAGES, ProjectStages, Project } from '../types';
 import { supabase } from '../supabase';
 import { useParams } from "react-router-dom";
 
+console.log("Renderizando TrackingView")
+
 
 interface TrackingViewProps {
   projectId?: string;

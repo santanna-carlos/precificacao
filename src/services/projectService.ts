@@ -252,11 +252,23 @@ export const getProjects = async (): Promise<{ data: Project[] | null, error: an
       return { data: null, error };
     }
 
+    // Buscar todas as despesas de todos os projetos em um único select
+    const allProjectIds = data.map((p: any) => p.id);
+    const { data: allExpenses, error: expensesError } = await supabase
+      .from('project_expenses')
+      .select('*')
+      .in('project_id', allProjectIds);
+
+    if (expensesError) {
+      console.error('Erro ao obter despesas dos projetos:', expensesError);
+      return { data: null, error: expensesError };
+    }
+
     // Para cada projeto, obter suas despesas
     const projects: Project[] = [];
 
     for (const dbProject of data) {
-      const expenses = await getProjectExpenses(dbProject.id);
+      const expenses = (allExpenses || []).filter(e => e.project_id === dbProject.id);
       projects.push(dbToProjectFormat(dbProject, expenses));
     }
 

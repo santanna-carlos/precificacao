@@ -2,13 +2,23 @@ import { supabase } from '../supabase';
 import { WorkshopSettings, WorkshopExpense } from '../types';
 
 // Função para converter o formato das configurações da marcenaria do frontend para o banco de dados
-const workshopToDbFormat = (workshop: WorkshopSettings) => {
-  return {
+const workshopToDbFormat = (workshop: WorkshopSettings, userId?: string) => {
+  const dbFormat = {
     workingDaysPerMonth: workshop.workingDaysPerMonth,
     workshopName: workshop.workshopName || '', // Garantir que nunca seja null
     logoImage: workshop.logoImage,
     lastUpdated: workshop.lastUpdated,
   };
+  
+  // Adicionar user_id apenas se fornecido (para não sobrescrever o valor existente em atualizações)
+  if (userId) {
+    return {
+      ...dbFormat,
+      user_id: userId
+    };
+  }
+  
+  return dbFormat;
 };
 
 // Função para converter o formato das configurações da marcenaria do banco de dados para o frontend
@@ -115,6 +125,15 @@ export const saveWorkshopSettings = async (settings: WorkshopSettings): Promise<
   try {
     console.log('Salvando configurações da marcenaria:', settings);
     
+    // Obter o usuário atual
+    const { data: { user } } = await supabase.auth.getUser();
+    console.log('Usuário atual:', user);
+    
+    if (!user) {
+      console.error('Nenhum usuário autenticado encontrado');
+      return { data: null, error: new Error('Usuário não autenticado') };
+    }
+    
     // Garantir que workshopName seja uma string
     const safeSettings = {
       ...settings,
@@ -127,6 +146,7 @@ export const saveWorkshopSettings = async (settings: WorkshopSettings): Promise<
     const { data: existingSettingsArray, error: fetchError } = await supabase
       .from('workshop_settings')
       .select('*')
+      .eq('user_id', user.id)
       .limit(1);
 
     if (fetchError) {
@@ -171,13 +191,18 @@ export const saveWorkshopSettings = async (settings: WorkshopSettings): Promise<
 
       workshopSettingsId = updatedSettings.id;
     } else {
-      console.log('Criando novas configurações da marcenaria');
+      console.log('Criando novas configurações da marcenaria para o usuário:', user.id);
       // Criar novas configurações
       // Usar .select('*') em vez de .single() para evitar erro 406
+      const dbData = workshopToDbFormat(safeSettings, user.id);
+      console.log('Dados formatados para inserção:', dbData);
+      
       const { data: newSettingsArray, error } = await supabase
         .from('workshop_settings')
-        .insert(workshopToDbFormat(safeSettings))
+        .insert(dbData)
         .select('*');
+
+      console.log('Resposta após inserção:', { data: newSettingsArray, error });
 
       if (error) {
         console.error('Erro ao criar configurações da marcenaria:', error);
@@ -217,7 +242,8 @@ export const saveWorkshopSettings = async (settings: WorkshopSettings): Promise<
     console.log('Configurações salvas com sucesso:', finalSettings);
     
     // Atualizar o localStorage para garantir que os dados estejam disponíveis mesmo offline
-    localStorage.setItem('workshopSettings', JSON.stringify(finalSettings));
+    console.log('[WorkshopSettings] Salvando dados no localStorage:', finalSettings);
+    localStorage.setItem('cachedWorkshopSettings', JSON.stringify(finalSettings));
     
     return { 
       data: finalSettings, 
@@ -232,131 +258,42 @@ export const saveWorkshopSettings = async (settings: WorkshopSettings): Promise<
 // Função para obter as configurações da marcenaria
 export const getWorkshopSettings = async (): Promise<{ data: WorkshopSettings | null, error: any }> => {
   try {
-    console.log('Obtendo configurações da marcenaria...');
+    // Obter o usuário atual
+    const { data: { user } } = await supabase.auth.getUser();
+    console.log('Obtendo configurações para o usuário:', user?.id);
     
-    // Abordagem alternativa: usar .select('*').limit(1) em vez de .single()
-    // Isso evita o erro 406 em alguns casos
-    const { data: workshopData, error } = await supabase
+    if (!user) {
+      console.error('Nenhum usuário autenticado encontrado');
+      return { data: null, error: new Error('Usuário não autenticado') };
+    }
+
+    const { data: settingsArray, error } = await supabase
       .from('workshop_settings')
       .select('*')
+      .eq('user_id', user.id)
       .limit(1);
 
-    console.log('Resposta do Supabase:', { data: workshopData, error });
-
-    // Se houver erro ou não houver dados, criar configurações padrão
-    if (error || !workshopData || workshopData.length === 0) {
-      console.log('Erro ou configurações não encontradas:', error);
-      console.log('Criando configurações padrão...');
-      
-      const defaultSettings: WorkshopSettings = {
-        workingDaysPerMonth: 22,
-        workshopName: '', // String vazia em vez de null
-        logoImage: null,
-        expenses: [],
-        lastUpdated: new Date().toISOString(),
-      };
-
-      // Verificar se temos dados no localStorage
-      const localStorageSettings = localStorage.getItem('workshopSettings');
-      if (localStorageSettings) {
-        try {
-          const parsedSettings = JSON.parse(localStorageSettings);
-          console.log('Usando configurações do localStorage:', parsedSettings);
-          return { data: parsedSettings, error: null };
-        } catch (parseError) {
-          console.error('Erro ao analisar configurações do localStorage:', parseError);
-        }
-      }
-
-      try {
-        // Tentar inserir configurações padrão
-        const { data: newSettingsArray, error: insertError } = await supabase
-          .from('workshop_settings')
-          .insert(workshopToDbFormat(defaultSettings))
-          .select('*');
-
-        console.log('Resposta após inserção de configurações padrão:', { data: newSettingsArray, error: insertError });
-
-        if (insertError || !newSettingsArray || newSettingsArray.length === 0) {
-          console.error('Erro ao criar configurações padrão:', insertError);
-          
-          // Salvar as configurações padrão no localStorage para uso futuro
-          localStorage.setItem('workshopSettings', JSON.stringify(defaultSettings));
-          
-          return { 
-            data: defaultSettings, 
-            error: null 
-          };
-        }
-
-        const newSettings = newSettingsArray[0];
-        console.log('Configurações padrão criadas com sucesso:', newSettings);
-        
-        // Obter as despesas (que serão vazias para um novo registro)
-        const expenses: WorkshopExpense[] = [];
-        
-        const finalSettings = { 
-          ...defaultSettings, 
-          expenses 
-        };
-        
-        // Salvar as configurações no localStorage para uso futuro
-        localStorage.setItem('workshopSettings', JSON.stringify(finalSettings));
-        
-        return {
-          data: finalSettings,
-          error: null,
-        };
-      } catch (insertError) {
-        console.error('Exceção ao criar configurações padrão:', insertError);
-        
-        // Salvar as configurações padrão no localStorage para uso futuro
-        localStorage.setItem('workshopSettings', JSON.stringify(defaultSettings));
-        
-        return { 
-          data: defaultSettings, 
-          error: null 
-        };
-      }
+    if (error) {
+      console.error('Erro ao buscar configurações da marcenaria:', error);
+      return { data: null, error };
     }
 
-    // Usar o primeiro item do array retornado
-    const workshopSettings = workshopData[0];
-    console.log('Configurações da marcenaria obtidas:', workshopSettings);
+    const settings = settingsArray && settingsArray.length > 0 ? settingsArray[0] : null;
+    if (!settings) {
+      console.log('Nenhuma configuração encontrada para o usuário:', user.id);
+      return { data: null, error: null };
+    }
+
+    console.log('Configurações encontradas:', settings);
     
-    // Obter as despesas da marcenaria
-    try {
-      const expenses = await getWorkshopExpenses(workshopSettings.id);
-      console.log(`Obtidas ${expenses.length} despesas para a marcenaria:`, expenses);
-
-      const workshopFormattedData = dbToWorkshopFormat(workshopSettings, expenses);
-      console.log('Dados formatados da marcenaria:', workshopFormattedData);
-      
-      // Salvar as configurações no localStorage para uso futuro
-      localStorage.setItem('workshopSettings', JSON.stringify(workshopFormattedData));
-      
-      return { 
-        data: workshopFormattedData, 
-        error: null 
-      };
-    } catch (expensesError) {
-      console.error('Erro ao obter despesas:', expensesError);
-      // Continuar mesmo com erro nas despesas, retornando array vazio
-      const workshopFormattedData = dbToWorkshopFormat(workshopSettings, []);
-      
-      // Salvar as configurações no localStorage para uso futuro
-      localStorage.setItem('workshopSettings', JSON.stringify(workshopFormattedData));
-      
-      return { 
-        data: workshopFormattedData, 
-        error: null 
-      };
-    }
+    // Buscar despesas
+    const expenses = await getWorkshopExpenses(settings.id);
+    return { data: dbToWorkshopFormat(settings, expenses), error: null };
   } catch (error) {
     console.error('Erro inesperado ao obter configurações da marcenaria:', error);
     
     // Verificar se temos dados no localStorage
-    const localStorageSettings = localStorage.getItem('workshopSettings');
+    const localStorageSettings = localStorage.getItem('cachedWorkshopSettings');
     if (localStorageSettings) {
       try {
         const parsedSettings = JSON.parse(localStorageSettings);
@@ -367,7 +304,7 @@ export const getWorkshopSettings = async (): Promise<{ data: WorkshopSettings | 
       }
     }
     
-    // Retornar configurações padrão mesmo com erro
+    // Salvar as configurações padrão no localStorage para uso futuro
     const defaultSettings = {
       workingDaysPerMonth: 22,
       workshopName: '',
@@ -376,8 +313,12 @@ export const getWorkshopSettings = async (): Promise<{ data: WorkshopSettings | 
       lastUpdated: new Date().toISOString(),
     };
     
-    // Salvar as configurações padrão no localStorage para uso futuro
-    localStorage.setItem('workshopSettings', JSON.stringify(defaultSettings));
+    if (!localStorage.getItem('cachedWorkshopSettings')) {
+      console.log('[WorkshopSettings] Salvando defaultSettings no localStorage pois não havia dados prévios.');
+      localStorage.setItem('cachedWorkshopSettings', JSON.stringify(defaultSettings));
+    } else {
+      console.log('[WorkshopSettings] NÃO sobrescreveu localStorage, pois já havia dados salvos.');
+    }
     
     return { 
       data: defaultSettings, 

@@ -23,6 +23,7 @@ import { getProjects, createProject, updateProject, deleteProject } from './serv
 import { getClients, createClient, updateClient, deleteClient } from './services/clientService';
 import { getWorkshopSettings, saveWorkshopSettings } from './services/workshopService';
 import { useLocation } from 'react-router-dom';
+import { getProjectStatus } from './components/ProjectsKanban';
 
 
 
@@ -318,55 +319,54 @@ function AuthenticatedApp() {
           if (!user) return;
           
           try {
-            // Tentar carregar do localStorage primeiro para garantir que temos dados imediatamente
-            const localStorageSettings = localStorage.getItem('workshopSettings');
-            if (localStorageSettings) {
-              const parsedSettings = JSON.parse(localStorageSettings);
-              setWorkshopSettings(parsedSettings);
-              console.log('Configurações da marcenaria carregadas do localStorage');
-            }
+            // Tentar carregar do Supabase
+            const { data, error } = await getWorkshopSettings();
             
-            // Só carregar do Supabase se não temos dados no localStorage ou se é um novo login
-            if (!localStorageSettings || isNewLogin) {
-              // Tentar carregar do Supabase
-              const { data, error } = await getWorkshopSettings();
-              
-              if (error) {
-                console.error('Erro ao carregar configurações da marcenaria do Supabase:', error);
-                // Se não temos dados locais e houve erro, criar configurações padrão
-                if (!localStorageSettings) {
-                  const defaultSettings = {
-                    workingDaysPerMonth: 22,
-                    workshopName: '', 
-                    logoImage: undefined,
-                    expenses: [],
-                    lastUpdated: new Date().toISOString()
-                  };
-                  setWorkshopSettings(defaultSettings);
-                  localStorage.setItem('workshopSettings', JSON.stringify(defaultSettings));
-                }
-              } else if (data) {
-                // Se carregou com sucesso do Supabase, atualizar o estado e o localStorage
-                setWorkshopSettings(data);
-                localStorage.setItem('workshopSettings', JSON.stringify(data));
-                console.log('Configurações da marcenaria atualizadas do Supabase');
+            if (error) {
+              console.error('Erro ao carregar configurações da marcenaria do Supabase:', error);
+              // Se não temos dados locais e houve erro, criar configurações padrão
+              if (!localStorage.getItem('cachedWorkshopSettings')) {
+                const defaultSettings = {
+                  workingDaysPerMonth: 22,
+                  workshopName: '', 
+                  logoImage: undefined,
+                  expenses: [],
+                  lastUpdated: new Date().toISOString()
+                };
+                console.log('[WorkshopSettings] Salvando defaultSettings no localStorage pois não havia dados prévios.');
+                localStorage.setItem('cachedWorkshopSettings', JSON.stringify(defaultSettings));
+              } else {
+                console.log('[WorkshopSettings] NÃO sobrescreveu localStorage, pois já havia dados salvos.');
               }
+            } else if (data) {
+              // Se carregou com sucesso do Supabase, atualizar o estado e o localStorage
+              setWorkshopSettings(data);
+              console.log('[WorkshopSettings] Salvando dados no localStorage:', data);
+              localStorage.setItem('cachedWorkshopSettings', JSON.stringify(data));
+              console.log('Configurações da marcenaria atualizadas do Supabase');
             }
           } catch (error) {
             console.error('Erro ao carregar configurações da marcenaria:', error);
             // Em caso de exceção, verificar se temos dados locais
-            const localStorageSettings = localStorage.getItem('workshopSettings');
-            if (!localStorageSettings) {
+            if (localStorage.getItem('cachedWorkshopSettings')) {
+              const localSettings = JSON.parse(localStorage.getItem('cachedWorkshopSettings')!);
+              setWorkshopSettings(localSettings);
+            } else {
               // Se não temos dados locais, criar configurações padrão
-              const defaultSettings = {
-                workingDaysPerMonth: 22,
-                workshopName: '', 
-                logoImage: undefined,
-                expenses: [],
-                lastUpdated: new Date().toISOString()
-              };
+              if (!localStorage.getItem('cachedWorkshopSettings')) {
+                const defaultSettings = {
+                  workingDaysPerMonth: 22,
+                  workshopName: '', 
+                  logoImage: undefined,
+                  expenses: [],
+                  lastUpdated: new Date().toISOString()
+                };
+                console.log('[WorkshopSettings] Salvando defaultSettings no localStorage pois não havia dados prévios.');
+                localStorage.setItem('cachedWorkshopSettings', JSON.stringify(defaultSettings));
+              } else {
+                console.log('[WorkshopSettings] NÃO sobrescreveu localStorage, pois já havia dados salvos.');
+              }
               setWorkshopSettings(defaultSettings);
-              localStorage.setItem('workshopSettings', JSON.stringify(defaultSettings));
             }
           }
         };
@@ -1471,9 +1471,9 @@ function AuthenticatedApp() {
         ...settings,
         lastUpdated: new Date().toISOString()
       };
-      localStorage.setItem('workshopSettings', JSON.stringify(localSettings));
+      console.log('[WorkshopSettings] Salvando dados no localStorage:', localSettings);
+      localStorage.setItem('cachedWorkshopSettings', JSON.stringify(localSettings));
       setWorkshopSettings(localSettings);
-      console.log('Configurações da marcenaria salvas localmente');
       
       // Calcular o novo valor do salário diário
       const salaryExpense = settings.expenses.find(expense => expense.type === 'Salário');
@@ -1481,16 +1481,18 @@ function AuthenticatedApp() {
         ? (salaryExpense.unitValue * salaryExpense.quantity) / settings.workingDaysPerMonth 
         : 0;
       
-      // Atualizar o valor do salário diário em todos os projetos que usam cálculo automático
       const updatedProjects = projects.map(project => {
-        if (project.useWorkshopForFixedExpenses) {
-          return {
-            ...project,
-            dailySalary: newDailySalary
-          };
-        }
-        return project;
-      });
+          if (
+            project.useWorkshopForFixedExpenses &&
+            getProjectStatus(project) === 'toStart'
+          ) {
+            return {
+              ...project,
+              dailySalary: newDailySalary
+            };
+          }
+          return project;
+        });
       
       // Atualizar os projetos localmente
       setProjects(updatedProjects);
@@ -1502,13 +1504,17 @@ function AuthenticatedApp() {
         console.error('Erro ao salvar configurações da marcenaria no Supabase:', error);
       } else if (data) {
         setWorkshopSettings(data);
-        localStorage.setItem('workshopSettings', JSON.stringify(data));
+        console.log('[WorkshopSettings] Salvando dados no localStorage:', data);
+        localStorage.setItem('cachedWorkshopSettings', JSON.stringify(data));
         console.log('Configurações da marcenaria atualizadas no Supabase');
       }
       
       // Atualizar os projetos no Supabase
       for (const project of updatedProjects) {
-        if (project.useWorkshopForFixedExpenses) {
+        if (
+          project.useWorkshopForFixedExpenses &&
+          getProjectStatus(project) === 'toStart'
+        ) {
           try {
             await updateProject(project);
           } catch (error) {
@@ -1880,7 +1886,7 @@ function AuthenticatedApp() {
                     <img
                       src="/imagens/banner2.png"
                       alt="Logo Offi"
-                      className={`w-40 h-30 hidden sm:block ${activeProjectId ? "md:hidden" : ""}`}
+                      className={`sm:hidden w-40 h-30 hidden sm:block ${activeProjectId ? "md:hidden" : ""}`}
                     />
 
                   </div>

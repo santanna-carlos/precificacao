@@ -2,11 +2,38 @@ import React, { useMemo, useState, useEffect } from 'react';
 import { Project, ProjectStages } from '../types';
 import { Calendar, Clock, Check, XCircle, AlertCircle, X, Trash2, Filter } from 'lucide-react';
 
+console.log("Renderizando ProjectsKanban")
+
 interface ProjectsKanbanProps {
   projects: Project[];
   onSelectProject: (projectId: string) => void;
   onDeleteProject: (projectId: string) => void;
 }
+
+// Função para determinar o status do projeto baseado nos estágios
+export const getProjectStatus = (project: Project): 'toStart' | 'inProgress' | 'completed' | 'canceled' => {
+  // Verificar primeiro se o projeto foi cancelado
+  if (project.stages?.projetoCancelado?.completed) {
+    return 'canceled';
+  }
+
+  // Verificar se o projeto foi instalado (agora considerado como concluído)
+  if (project.stages?.instalacao?.completed) {
+    return 'completed';
+  }
+
+  // Projeto está "A iniciar" se não tem nenhuma caixa marcada ou apenas orçamento está marcado
+  const hasAnyNonOrcamentoStageCompleted = Object.entries(project.stages || {}).some(
+    ([key, stage]) => key !== 'orcamento' && stage.completed
+  );
+
+  if (!hasAnyNonOrcamentoStageCompleted) {
+    return 'toStart';
+  }
+
+  // Se não se encaixa em nenhuma categoria específica, considerar em andamento
+  return 'inProgress';
+};
 
 export function ProjectsKanban({ projects, onSelectProject, onDeleteProject }: ProjectsKanbanProps) {
   // Estados para os filtros
@@ -43,31 +70,6 @@ export function ProjectsKanban({ projects, onSelectProject, onDeleteProject }: P
     
     return years;
   }, []);
-  
-  // Função para determinar o status do projeto baseado nos estágios
-  const getProjectStatus = (project: Project): 'toStart' | 'inProgress' | 'completed' | 'canceled' => {
-    // Verificar primeiro se o projeto foi cancelado
-    if (project.stages?.projetoCancelado?.completed) {
-      return 'canceled';
-    }
-    
-    // Verificar se o projeto foi instalado (agora considerado como concluído)
-    if (project.stages?.instalacao?.completed) {
-      return 'completed';
-    }
-    
-    // Projeto está "A iniciar" se não tem nenhuma caixa marcada ou apenas orçamento está marcado
-    const hasAnyNonOrcamentoStageCompleted = Object.entries(project.stages || {}).some(
-      ([key, stage]) => key !== 'orcamento' && stage.completed
-    );
-    
-    if (!hasAnyNonOrcamentoStageCompleted) {
-      return 'toStart';
-    }
-    
-    // Se não se encaixa em nenhuma categoria específica, considerar em andamento
-    return 'inProgress';
-  };
   
   // Função para filtrar projetos
   const filteredProjects = useMemo(() => {

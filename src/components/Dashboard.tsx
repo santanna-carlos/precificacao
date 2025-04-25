@@ -1,5 +1,8 @@
 import React, { useState, useEffect, useMemo } from "react";
 
+console.log("Renderizando Dashboard")
+
+
 // Tipos esperados
 type Project = {
   id: string;
@@ -13,9 +16,26 @@ type Project = {
   stages: {
     orcamento?: { date: string; completed?: boolean };
     projetoTecnico?: { date: string; completed?: boolean };
-    instalacao?: { date: string; completed?: boolean };
+    instalacao?: { date: string; completed?: boolean; realCost?: number };
     projetoCancelado?: { date: string; completed?: boolean; cancellationReason?: string };
   };
+  totalCost?: number;
+  priceType?: string;
+  materials?: {
+    quantity: string | number;
+    unitValue: string | number;
+  }[];
+  frozenDailyCost?: number;
+  fixedExpenseDays?: number;
+  fixedExpenses?: {
+    total: number;
+  }[];
+  totalFixedExpenses?: number;
+  totalVariableExpenses?: number;
+  variableExpenses?: {
+    total: number;
+  }[];
+  totalMaterialCost?: number;
 };
 
 type DashboardProps = {
@@ -266,6 +286,14 @@ export default function Dashboard({
   const conversionRate = useMemo(() => getConversionRate(projects), [projects]);
   const totalInProgressValue = useMemo(() => getTotalInProgressValue(projects), [projects]);
 
+  // Nova métrica: quantidade de projetos com diferença de custo (ignorando realCost 0)
+  const qtdProjetosComDiferenca = useMemo(() => {
+    return projects.filter(p => {
+      const realCost = p.stages?.instalacao?.realCost;
+      return realCost !== undefined && realCost !== 0 && realCost !== p.totalCost;
+    }).length;
+  }, [projects]);
+
   // Mini calendário (exemplo para o mês atual)
   const now = new Date();
   const daysWithDelivery = useMemo(() => 
@@ -368,13 +396,16 @@ export default function Dashboard({
             <div>
               <b className="text-gray-600">Taxa de conversão:</b> {conversionRate}%
             </div>
+            <div>
+              <b className="text-gray-600">Qtd. de projetos com diferença:</b> {qtdProjetosComDiferenca}
+            </div>
           </div>
           
         </div>
 
         {/* Box 2: Últimos Projetos e Indicadores */}
         <div className="bg-white rounded-lg border border-gray-200 shadow-md p-5 flex flex-col gap-3">
-          <h2 className="font-bold text-lg mb-2">Últimos Projetos Cadastrados</h2>
+          <h2 className="font-bold text-lg mb-4">Últimos Projetos Cadastrados</h2>
           <ul className="divide-y">
             {recentProjects.map((p) => {
               // Formatar a data do orçamento para DD/MM/YYYY
@@ -429,14 +460,106 @@ export default function Dashboard({
         {/* Box 3: Resumo Financeiro */}
         <div className="bg-white rounded-lg border border-gray-200 shadow-md p-5 flex flex-col gap-3">
           <h2 className="font-bold text-lg mb-4">Resumo Financeiro</h2>
-          <div className="flex flex-col items-center justify-center py-4">
-            <div className="text-sm font-medium text-gray-600 mb-2">Valor total de Projetos em Andamento:</div>
-            <div className="text-2xl md:text-2xl sm:text-3xl font-bold bg-gradient-to-r from-green-500 to-emerald-600 bg-clip-text text-transparent">
-              R$ {totalInProgressValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+          <div className="flex flex-col items-center justify-center py-4 gap-6">
+            {/* Valor total de Projetos em Andamento */}
+            <div className="flex flex-col items-center">
+              <div className="text-sm font-medium text-gray-600 mb-1">Valor total de Projetos em Andamento</div>
+              <div className="text-2xl md:text-2xl sm:text-3xl font-bold bg-gradient-to-r from-green-500 to-emerald-600 bg-clip-text text-transparent">
+                R$ {totalInProgressValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+              </div>
+              <div className="mt-2 text-xs text-gray-500">
+                Total de {groupedProjects.inProgress.length} projeto{groupedProjects.inProgress.length !== 1 ? 's' : ''} em andamento
+              </div>
             </div>
-            <div className="mt-3 text-xs text-gray-500">
-              Total de {groupedProjects.inProgress.length} projeto{groupedProjects.inProgress.length !== 1 ? 's' : ''} em andamento
-            </div>
+            <hr className="w-full border-t border-gray-200" />
+            {(() => {
+              const currentYear = new Date().getFullYear();
+              const completedThisYear = groupedProjects.completed.filter(p => {
+                const installDate = p.stages?.instalacao?.date;
+                return installDate && new Date(installDate).getFullYear() === currentYear;
+              });
+              // Função auxiliar para obter o preço correto do projeto (copiado do FinancialSummary)
+              const getProjectPrice = (project: Project) => {
+                if (!project.salePrice || !project.totalCost) return 0;
+                if (project.priceType === 'markup') {
+                  const materialsTotal = project.materials
+                    ? project.materials.reduce((sum, material) => {
+                        const quantity = typeof material.quantity === 'string' 
+                          ? (material.quantity === '' ? 0 : parseFloat(material.quantity)) 
+                          : (material.quantity || 0);
+                        const unitValue = typeof material.unitValue === 'string'
+                          ? (material.unitValue === '' ? 0 : parseFloat(material.unitValue))
+                          : (material.unitValue || 0);
+                        return sum + quantity * unitValue;
+                      }, 0)
+                    : 0;
+                  const markup = materialsTotal > 0 ? project.salePrice / materialsTotal : 1;
+                  return project.totalCost * markup;
+                }
+                return project.salePrice;
+              };
+              // Funções auxiliares para custos
+              const getFixedExpenses = (project: Project) => {
+                if (project.frozenDailyCost && project.fixedExpenseDays) {
+                  return project.frozenDailyCost * project.fixedExpenseDays;
+                } else if (project.fixedExpenseDays) {
+                  const dailyCost = project.fixedExpenses?.reduce((sum, expense) => sum + (expense.total || 0), 0) || 0;
+                  return dailyCost * project.fixedExpenseDays;
+                } else {
+                  return project.totalFixedExpenses || (project.fixedExpenses?.reduce((sum, expense) => sum + (expense.total || 0), 0) || 0);
+                }
+              };
+              const getVariableExpenses = (project: Project) => {
+                return project.totalVariableExpenses || (project.variableExpenses?.reduce((sum, expense) => sum + (expense.total || 0), 0) || 0);
+              };
+              const getMaterials = (project: Project) => {
+                return project.totalMaterialCost || (project.materials?.reduce((sum, material) => {
+                  const quantity = typeof material.quantity === 'string' 
+                    ? (material.quantity === '' ? 0 : parseFloat(material.quantity)) 
+                    : (material.quantity || 0);
+                  const unitValue = typeof material.unitValue === 'string'
+                    ? (material.unitValue === '' ? 0 : parseFloat(material.unitValue))
+                    : (material.unitValue || 0);
+                  return sum + (quantity * unitValue);
+                }, 0) || 0);
+              };
+              // Lucro total do ano corrente
+              const totalProfit = completedThisYear.reduce((sum, p) => {
+                const totalRevenue = getProjectPrice(p);
+                const fixed = getFixedExpenses(p);
+                const variable = getVariableExpenses(p);
+                const materials = getMaterials(p);
+                return sum + (totalRevenue - (fixed + variable + materials));
+              }, 0);
+              // Diferença dos custos totais: soma dos valores de realCost dos projetos concluídos no ano corrente (igual FinancialSummary)
+              const totalDiff = completedThisYear.reduce((sum, p) => {
+                const realCost = p.stages?.instalacao?.realCost;
+                return sum + (realCost !== undefined ? Number(realCost) : 0);
+              }, 0);
+              return (
+                <>
+                  <div className="flex flex-col items-center">
+                    <div className="text-sm font-medium text-gray-600 mb-1">Lucro Total</div>
+                    <div className="text-2xl md:text-2xl sm:text-3xl font-bold bg-gradient-to-r from-green-700 to-lime-500 bg-clip-text text-transparent">
+                      {totalProfit.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    </div>
+                    <div className="mt-2 text-xs text-gray-500">
+                      Apenas projetos concluídos em {currentYear}
+                    </div>
+                  </div>
+                  <hr className="w-full border-t border-gray-200 my-2" />
+                  <div className="flex flex-col items-center">
+                    <div className="text-sm font-medium text-gray-600 mb-1">Diferença da Previsão de Custos</div>
+                    <div className="text-2xl md:text-2xl sm:text-3xl font-bold bg-gradient-to-r from-blue-700 to-cyan-500 bg-clip-text text-transparent">
+                      {totalDiff.toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' })}
+                    </div>
+                    <div className="mt-2 text-xs text-gray-500">
+                    Apenas projetos concluídos em {currentYear}
+                    </div>
+                  </div>
+                </>
+              );
+            })()}
           </div>
         </div>
       </div>

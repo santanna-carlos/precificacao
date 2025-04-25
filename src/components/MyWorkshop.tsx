@@ -1,5 +1,7 @@
 import React, { useState, useEffect } from 'react';
 import { Building2, PlusCircle, Trash2, Save, Calendar, Loader2 } from 'lucide-react';
+import { getProjects, updateProject } from '../services/projectService';
+import { getProjectStatus } from './Dashboard'; // ajuste o caminho se necessário
 
 // Lista de despesas fixas comuns em marcenarias
 const COMMON_WORKSHOP_EXPENSES = [
@@ -145,25 +147,22 @@ export const MyWorkshop: React.FC<MyWorkshopProps> = ({ workshopSettings, onSave
   };
   
   // Função para salvar as configurações da marcenaria
-  const handleSave = () => {
-    // Ativar indicador de carregamento
+  const handleSave = async () => {
     setIsSaving(true);
-    
-    // Atualizar a data de última atualização
     const updatedSettings = {
       ...settings,
       lastUpdated: new Date().toISOString()
     };
-    
-    // Salvar os dados atualizados
     onSaveSettings(updatedSettings);
     setSettings(updatedSettings);
-    
-    // Mostrar feedback com timeout para simular o tempo de processamento
-    setTimeout(() => {
+
+    try {
       setIsSaving(false);
-      alert('Configurações da marcenaria salvas com sucesso!');
-    }, 1500);
+      alert('Configurações da marcenaria atualizadas com sucesso!');
+    } catch (err: any) {
+      setIsSaving(false);
+      alert('Erro ao atualizar configurações da marcenaria: ' + (err?.message || err));
+    }
   };
   
   // Função para atualizar os dias de trabalho por mês
@@ -217,17 +216,7 @@ export const MyWorkshop: React.FC<MyWorkshopProps> = ({ workshopSettings, onSave
               </div>
             </div>
             
-            {salaryExpense && (
-              <div className="pt-3 border-t border-blue-100">
-                <p className="text-sm font-medium text-gray-600">Salário Diário</p>
-                <div className="flex items-baseline">
-                  <span className="text-2xl font-bold text-amber-600">
-                    R$ {dailySalary.toFixed(2)}
-                  </span>
-                  <span className="ml-2 text-xs text-gray-500">/dia</span>
-                </div>
-              </div>
-            )}
+
             
             <div className="pt-3 border-t border-blue-100">
               <p className="text-sm font-medium text-gray-600">Valor Hora (8h/dia)</p>
