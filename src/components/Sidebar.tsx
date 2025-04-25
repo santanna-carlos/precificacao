@@ -56,17 +56,20 @@ export function Sidebar({
     if (!dateString) return '';
     
     try {
-      const date = new Date(dateString);
+      // Corrigido: Criar data no fuso horário local
+      const [year, month, day] = dateString.split('-').map(Number);
       
-      // Verifica se a data é válida
-      if (isNaN(date.getTime())) return dateString;
+      // Se não for possível extrair ano, mês e dia, tente o método padrão
+      if (!year || !month || !day) {
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) return dateString;
+        
+        // Formata para DD-MM-YYYY
+        return `${date.getDate().toString().padStart(2, '0')}-${(date.getMonth() + 1).toString().padStart(2, '0')}-${date.getFullYear()}`;
+      }
       
       // Formata para DD-MM-YYYY
-      const day = date.getDate().toString().padStart(2, '0');
-      const month = (date.getMonth() + 1).toString().padStart(2, '0');
-      const year = date.getFullYear();
-      
-      return `${day}-${month}-${year}`;
+      return `${day.toString().padStart(2, '0')}-${month.toString().padStart(2, '0')}-${year}`;
     } catch (error) {
       // Em caso de erro na formatação, retorna a data original
       return dateString;
@@ -106,9 +109,24 @@ export function Sidebar({
   
   // Ordenar projetos por data de criação (mais recentes primeiro)
   const sortedProjects = [...filteredProjects].sort((a, b) => {
+    // Corrigido: Criar datas no fuso horário local
+    const getLocalDate = (dateStr: string): Date => {
+      if (!dateStr) return new Date(0); // Data mínima para ordenação
+      
+      const [year, month, day] = dateStr.split('-').map(Number);
+      
+      // Se conseguimos extrair ano, mês e dia, crie a data no fuso local
+      if (year && month && day) {
+        return new Date(year, month - 1, day);
+      }
+      
+      // Fallback para o método padrão (menos preciso)
+      return new Date(dateStr);
+    };
+    
     // Usar a data do projeto como critério de ordenação
-    const dateA = new Date(a.date || '');
-    const dateB = new Date(b.date || '');
+    const dateA = getLocalDate(a.date || '');
+    const dateB = getLocalDate(b.date || '');
     
     // Ordem decrescente (mais recentes primeiro)
     return dateB.getTime() - dateA.getTime();

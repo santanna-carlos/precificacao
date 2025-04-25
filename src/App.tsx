@@ -7,281 +7,46 @@ import { Routes, Route, Navigate } from 'react-router-dom';
 import { ExpenseSection } from './components/ExpenseSection';
 import { Summary } from './components/Summary';
 import { Sidebar } from './components/Sidebar';
-import { ExpenseItem, Project, ProjectSummary, ProjectStages, WorkshopSettings, Client, PROJECT_STAGES } from './types';
+import { ExpenseItem, Project, ProjectSummary, ProjectStages, WorkshopSettings, Client } from './types';
 import { ProjectStagesBar } from './components/ProjectStagesBar';
 import { ClientsList } from './components/ClientsList';
 import { ProjectsKanban } from './components/ProjectsKanban';
 import { MyWorkshop } from './components/MyWorkshop';
 import { FinancialSummary } from './components/FinancialSummary';
+import TrackingView from './components/TrackingView';
 import { UserProfile } from './components/UserProfile';
 import Dashboard from './components/Dashboard'; // Importar o componente Dashboard
-import { useAuth } from './contexts/AuthContext';
+import { AuthProvider, useAuth } from './contexts/AuthContext';
 import { Login } from './components/Login';
 import { Signup } from './components/Signup'; // Importar o componente Signup
-import { getProjects, createProject, updateProject, deleteProject, getProject } from './services/projectService';
+import { getProjects, createProject, updateProject, deleteProject } from './services/projectService';
 import { getClients, createClient, updateClient, deleteClient } from './services/clientService';
 import { getWorkshopSettings, saveWorkshopSettings } from './services/workshopService';
-import { supabase } from './supabase';
-import { SpeedInsights } from "@vercel/speed-insights/next"
+import { useLocation } from 'react-router-dom';
 
-const ClientTrackingView = () => {
-  const [project, setProject] = useState<Project | null>(null);
-  const [loading, setLoading] = useState(true);
-  const [error, setError] = useState<string | null>(null);
 
-  useEffect(() => {
-    const loadProject = async () => {
-      try {
-        // Obter o ID do projeto da URL
-        const urlParams = new URLSearchParams(window.location.search);
-        const projectId = urlParams.get('tracking');
-        
-        if (!projectId) {
-          setError("Link de rastreamento inválido");
-          setLoading(false);
-          return;
-        }
-
-        console.log("Buscando projeto com ID:", projectId);
-        
-        // Tentar buscar do Supabase diretamente sem autenticação
-        const { data, error } = await supabase
-          .from('projects')
-          .select('*')
-          .eq('id', projectId)
-          .single();
-        
-        if (error) {
-          console.error("Erro ao buscar projeto do Supabase:", error);
-          
-          // Tentar buscar do localStorage
-          const localProjects = JSON.parse(localStorage.getItem('projects') || '[]');
-          const localProject = localProjects.find((p: any) => p.id === projectId);
-          
-          if (localProject) {
-            console.log("Projeto encontrado no localStorage:", localProject);
-            setProject(localProject);
-            setLoading(false);
-            return;
-          }
-          
-          setError("Projeto não encontrado");
-          setLoading(false);
-          return;
-        }
-        
-        console.log("Projeto encontrado no Supabase:", data);
-        setProject(data);
-        setLoading(false);
-      } catch (error) {
-        console.error('Erro ao carregar projeto do Supabase:', error);
-        setError("Erro ao carregar dados do projeto");
-        setLoading(false);
-      }
-    };
-
-    loadProject();
-  }, []);
-
-  if (loading) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100">
-        <div className="bg-white p-8 rounded-lg shadow-md max-w-md w-full">
-          <div className="text-center">
-            <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-500 mx-auto"></div>
-            <h2 className="mt-4 text-lg font-medium text-gray-900">Carregando...</h2>
-            <p className="mt-1 text-sm text-gray-500">
-              Aguarde enquanto carregamos as informações do projeto.
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-
-  if (error || !project) {
-    return (
-      <div className="min-h-screen flex items-center justify-center bg-gray-100">
-        <div className="bg-white p-8 rounded-lg shadow-md max-w-md w-full">
-          <div className="text-center">
-            <AlertCircle className="mx-auto h-12 w-12 text-red-500" />
-            <h2 className="mt-2 text-lg font-medium text-gray-900">
-              {error || "Projeto não encontrado"}
-            </h2>
-            <p className="mt-1 text-sm text-gray-500">
-              O link que você acessou não corresponde a nenhum projeto ativo.
-            </p>
-          </div>
-        </div>
-      </div>
-    );
-  }
-  
-  const isCanceled = project.stages?.projetoCancelado?.completed || false;
-  const cancelDate = project.stages?.projetoCancelado?.date 
-    ? new Date(project.stages.projetoCancelado.date).toLocaleDateString('pt-BR') 
-    : '';
-  
-  const isProjectCompleted = project.stages?.instalacao?.completed || false;
-  const completionDate = project.stages?.instalacao?.date 
-    ? new Date(project.stages.instalacao.date).toLocaleDateString('pt-BR') 
-    : '';
-
-  const formattedEstimatedDate = project.estimatedCompletionDate 
-    ? (() => {
-        const date = new Date(project.estimatedCompletionDate);
-        const localDate = new Date(date.getTime() + date.getTimezoneOffset() * 60000);
-        return localDate.toLocaleDateString('pt-BR', {
-          day: '2-digit',
-          month: '2-digit',
-          year: 'numeric'
-        });
-      })()
-    : null;
-
-  const stagesArray = PROJECT_STAGES.filter(stage => stage.id !== 'projetoCancelado');
-
-  return (
-    <div className="min-h-screen bg-gray-100">
-      <div className="py-6 px-4 sm:px-6 lg:px-8">
-        <div className="max-w-3xl mx-auto">
-          <div className="bg-white rounded-lg shadow-md overflow-hidden mb-6">
-            <div className="p-6 border-b border-gray-200 bg-gradient-to-r from-blue-500 to-indigo-600 text-white">
-              <h1 className="text-2xl font-bold">Acompanhamento de Projeto</h1>
-              <p className="mt-1 text-lg">{project.clientName || ''} - {project.name || ''}</p>
-              <p className="mt-1 text-sm opacity-80">
-                Iniciado em: {new Date(project.date).toLocaleDateString('pt-BR', { 
-                  day: '2-digit', 
-                  month: '2-digit', 
-                  year: 'numeric',
-                  hour: '2-digit',
-                  minute: '2-digit'
-                })}
-              </p>
-              {formattedEstimatedDate && (
-                <p className="mt-1 text-sm opacity-80">
-                  Data prevista de entrega: {formattedEstimatedDate}
-                </p>
-              )}
-            </div>
-            
-            {isCanceled && (
-              <div className="p-4 bg-red-50 border-l-4 border-red-500">
-                <div className="flex items-center">
-                  <XCircle className="h-5 w-5 text-red-500 mr-2" />
-                  <p className="text-sm text-red-700 font-medium">
-                    Este projeto foi cancelado em {cancelDate}
-                  </p>
-                </div>
-              </div>
-            )}
-            
-            {isProjectCompleted && !isCanceled && (
-              <div className="p-4 bg-green-50 border-l-4 border-green-500">
-                <div className="flex items-center">
-                  <Check className="h-5 w-5 text-green-500 mr-2" />
-                  <p className="text-sm text-green-700 font-medium">
-                    Projeto finalizado com sucesso em {completionDate}
-                  </p>
-                </div>
-                <p className="mt-1 text-sm text-green-600 ml-7">
-                  Agradecemos pela confiança! Esperamos que esteja satisfeito com o resultado.
-                </p>
-              </div>
-            )}
-          </div>
-          
-          <div className="bg-white rounded-lg shadow-md overflow-hidden">
-            <div className="p-4 border-b border-gray-200">
-              <h2 className="text-lg font-medium text-gray-900">Status do Projeto</h2>
-            </div>
-            
-            <div className="p-4">
-              <div className="flow-root">
-                <ul className="-mb-8">
-                  {stagesArray
-                    .map((stage) => {
-                      const stageKey = stage.id as keyof ProjectStages;
-                      return {
-                        ...stage,
-                        completed: project.stages?.[stageKey]?.completed || false,
-                        date: project.stages?.[stageKey]?.date || null
-                      };
-                    })
-                    .map((stage, index) => (
-                      <li key={stage.id}>
-                        <div className="relative pb-8">
-                          {index !== stagesArray.length - 1 && stage.id !== 'instalacao' && (
-                            <span
-                              className="absolute top-4 left-4 -ml-px h-full w-0.5 bg-gray-200"
-                              aria-hidden="true"
-                            />
-                          )}
-                          <div className="relative flex space-x-3">
-                            <div>
-                              <span className={`h-8 w-8 rounded-full flex items-center justify-center ring-8 ring-white ${
-                                project.stages?.[stage.id as keyof ProjectStages]?.completed 
-                                  ? 'bg-green-500' 
-                                  : isCanceled 
-                                    ? 'bg-gray-300' 
-                                    : index === stagesArray.findIndex(s => !project.stages?.[s.id as keyof ProjectStages]?.completed) 
-                                      ? 'bg-blue-500 animate-pulse' 
-                                      : 'bg-gray-300'
-                              }`}>
-                                {project.stages?.[stage.id as keyof ProjectStages]?.completed ? (
-                                  <Check className="h-5 w-5 text-white" />
-                                ) : (
-                                  <span className="h-2 w-2 rounded-full bg-white" />
-                                )}
-                              </span>
-                            </div>
-                            <div className="min-w-0 flex-1 pt-1.5 flex justify-between space-x-4">
-                              <div>
-                                <p className={`text-sm font-medium ${
-                                  project.stages?.[stage.id as keyof ProjectStages]?.completed 
-                                    ? 'text-gray-900' 
-                                    : isCanceled 
-                                      ? 'text-gray-500' 
-                                      : index === stagesArray.findIndex(s => !project.stages?.[s.id as keyof ProjectStages]?.completed) 
-                                        ? 'text-blue-600' 
-                                        : 'text-gray-500'
-                                }`}>
-                                  {stage.label}
-                                </p>
-                              </div>
-                              <div className="text-right text-sm whitespace-nowrap text-gray-500">
-                                {stage.date && (
-                                  <time dateTime={stage.date}>{new Date(stage.date).toLocaleDateString('pt-BR')}</time>
-                                )}
-                              </div>
-                            </div>
-                          </div>
-                        </div>
-                      </li>
-                    ))}
-                </ul>
-              </div>
-            </div>
-          </div>
-          
-          <div className="mt-6 text-center text-sm text-gray-500">
-            <p>Este é um acompanhamento em tempo real do seu projeto.</p>
-            <p className="mt-1">Para mais informações, entre em contato pelo telefone informado.</p>
-            {formattedEstimatedDate && (
-              <p className="mt-4 text-center text-sm text-blue-600 font-medium">
-                Data prevista de entrega: {formattedEstimatedDate}
-              </p>
-            )}
-          </div>
-        </div>
-      </div>
-    </div>
-  );
-};
 
 function App() {
+  const location = useLocation();
+
+  if (location.pathname === '/tracking') {
+    return <TrackingView />;
+  }
+
+  return (
+    <AuthProvider>
+      <AuthenticatedApp />
+    </AuthProvider>
+  );
+}
+
+
+
+
+
+
+function AuthenticatedApp() {
   const { user, loading, signOut } = useAuth();
-  
   const [showProjectsKanban, setShowProjectsKanban] = useState(false);
   const [projects, setProjects] = useState<Project[]>([]);
   const [activeProjectId, setActiveProjectId] = useState<string | null>(null);
@@ -604,58 +369,6 @@ function App() {
         
         loadWorkshopSettings();
         
-        // Verificar se há um parâmetro de tracking na URL
-        const urlParams = new URLSearchParams(window.location.search);
-        const trackingParam = urlParams.get('tracking');
-        
-        // Só definir o estado de navegação se não houver um estado salvo
-        if (!hasStoredState) {
-          if (trackingParam) {
-            console.log('Parâmetro de tracking encontrado:', trackingParam);
-            
-            // Verificar se o projeto existe no Supabase
-            const projectExists = projects.find(project => project.id === trackingParam);
-            
-            // Verificar também no localStorage (para casos onde o projeto pode não estar no Supabase ainda)
-            const localProjects = JSON.parse(localStorage.getItem('projects') || '[]');
-            const localProjectExists = localProjects.some((p: any) => p.id === trackingParam);
-            
-            // Verificar no registro de links de tracking
-            const trackingLinks = JSON.parse(localStorage.getItem('trackingLinks') || '{}');
-            const trackingLinkExists = trackingLinks[trackingParam];
-            
-            if (projectExists || localProjectExists || trackingLinkExists) {
-              console.log('Projeto de tracking encontrado, exibindo visualização de cliente');
-              setShowClientTracking(true);
-              
-              setShowProjectsKanban(false);
-              setShowClientsList(false);
-              setShowMyWorkshop(false);
-              setShowFinancialSummary(false);
-              setShowUserProfile(false);
-              setShowDashboard(false);
-              setActiveProjectId(null);
-            } else {
-              console.log('Projeto de tracking não encontrado');
-              setShowProjectsKanban(false);
-              setShowClientsList(false);
-              setShowMyWorkshop(false);
-              setShowFinancialSummary(false);
-              setShowUserProfile(false);
-              setShowDashboard(true);
-              setActiveProjectId(null);
-              alert('O link de acompanhamento que você tentou acessar não é válido ou o projeto não existe mais.');
-            }
-          } else {
-            setShowProjectsKanban(false);
-            setShowClientsList(false);
-            setShowMyWorkshop(false);
-            setShowFinancialSummary(false);
-            setShowUserProfile(false);
-            setShowDashboard(true);
-            setActiveProjectId(null);
-          }
-        }
       } catch (error) {
         console.error('Erro ao carregar dados iniciais:', error);
         setProjects([]);
@@ -1860,9 +1573,6 @@ function App() {
     }
   };
 
-  const [showClientTracking, setShowClientTracking] = useState(false);
-  const [trackingProjectId, setTrackingProjectId] = useState<string | null>(null);
-
   const handleUpdateProject = async (projectId: string, field: string, value: any) => {
     console.log(`handleUpdateProject chamado com campo ${field} e valor:`, value);
     
@@ -1934,24 +1644,6 @@ function App() {
       };
     }
   }, [user, signOut]);
-
-  const [isPublicTracking, setIsPublicTracking] = useState(false);
-  
-  // Verificar o parâmetro de tracking na URL antes de qualquer outra lógica
-  useEffect(() => {
-    const urlParams = new URLSearchParams(window.location.search);
-    const trackingParam = urlParams.get('tracking');
-    
-    if (trackingParam) {
-      console.log('Parâmetro de tracking encontrado:', trackingParam);
-      setIsPublicTracking(true);
-    }
-  }, []);
-  
-  // Se for uma visualização pública, mostrar o componente ClientTrackingView
-  if (isPublicTracking) {
-    return <ClientTrackingView />;
-  }
 
   useEffect(() => {
     if (projects.length > 0) {
@@ -2060,9 +1752,7 @@ function App() {
 
   return (
     <>
-      {showClientTracking ? (
-        <ClientTrackingView />
-      ) : loading ? (
+      {loading ? (
         <div className="min-h-screen flex items-center justify-center bg-gray-100">
           <div className="bg-white p-8 rounded-lg shadow-md max-w-md w-full">
             <div className="text-center">
@@ -2164,7 +1854,7 @@ function App() {
             <div className={`
               bg-[#506D67] md:bg-gray-100 
               text-white md:text-gray-800 
-               
+              
               w-full sticky top-0 z-10
               ${!activeProjectId && 'md:hidden'}
             `}>
@@ -2395,7 +2085,7 @@ function App() {
                           </div>
                         </div>
                       )}
-                       
+                      
                       <ExpenseSection
                         title="Despesas Fixas"
                         type="fixed"

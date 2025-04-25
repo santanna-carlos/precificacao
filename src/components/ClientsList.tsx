@@ -354,6 +354,31 @@ export function ClientsList({ clients, projects = [], onAddClient, onUpdateClien
     );
   }, [selectedClient, projects]);
 
+  // Função para formatar data no fuso horário local
+  const formatLocalDate = (dateString: string | null | undefined): string => {
+    if (!dateString) return '';
+    
+    try {
+      // Criar data no fuso horário local extraindo ano, mês e dia
+      const [year, month, day] = dateString.split('-').map(Number);
+      
+      // Se não for possível extrair ano, mês e dia, tente o método padrão
+      if (!year || !month || !day) {
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) return '';
+        
+        return date.toLocaleDateString('pt-BR');
+      }
+      
+      // Criar data local e formatar
+      const date = new Date(year, month - 1, day);
+      return date.toLocaleDateString('pt-BR');
+    } catch (error) {
+      console.error('Erro ao formatar data:', error);
+      return '';
+    }
+  };
+
   return (
     <div className="bg-white rounded-lg shadow-md p-4 sm:p-6 mb-4">
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6">
@@ -657,7 +682,7 @@ export function ClientsList({ clients, projects = [], onAddClient, onUpdateClien
                             )}
                           </h4>
                           <span className="text-sm text-gray-500">
-                            {new Date(project.date).toLocaleDateString('pt-BR')}
+                            {formatLocalDate(project.date)}
                           </span>
                         </div>
                         

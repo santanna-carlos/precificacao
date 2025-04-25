@@ -72,18 +72,33 @@ export function ProjectsKanban({ projects, onSelectProject, onDeleteProject }: P
   // Função para filtrar projetos
   const filteredProjects = useMemo(() => {
     return projects.filter(project => {
+      // Criar data local - utilitário para evitar problemas de fuso horário
+      const getLocalDate = (dateStr?: string | null): Date | null => {
+        if (!dateStr) return null;
+        
+        const [year, month, day] = dateStr.split('-').map(Number);
+        
+        // Se conseguimos extrair ano, mês e dia, crie a data no fuso local
+        if (year && month && day) {
+          return new Date(year, month - 1, day);
+        }
+        
+        // Fallback para o método padrão (menos preciso)
+        return new Date(dateStr);
+      };
+      
       // Filtrar por mês
       if (filterMonth && project.date) {
-        const projectDate = new Date(project.date);
-        if (projectDate.getMonth().toString() !== filterMonth) {
+        const localDate = getLocalDate(project.date);
+        if (!localDate || localDate.getMonth().toString() !== filterMonth) {
           return false;
         }
       }
       
       // Filtrar por ano
       if (filterYear && project.date) {
-        const projectDate = new Date(project.date);
-        if (projectDate.getFullYear().toString() !== filterYear) {
+        const localDate = getLocalDate(project.date);
+        if (!localDate || localDate.getFullYear().toString() !== filterYear) {
           return false;
         }
       }
@@ -130,7 +145,19 @@ export function ProjectsKanban({ projects, onSelectProject, onDeleteProject }: P
     if (!dateString) return 'Data não definida';
     
     try {
-      const date = new Date(dateString);
+      // Criar data no fuso horário local extraindo ano, mês e dia
+      const [year, month, day] = dateString.split('-').map(Number);
+      
+      // Se não for possível extrair ano, mês e dia, tente o método padrão
+      if (!year || !month || !day) {
+        const date = new Date(dateString);
+        if (isNaN(date.getTime())) return 'Data inválida';
+        
+        return date.toLocaleDateString('pt-BR');
+      }
+      
+      // Criar data local e formatar
+      const date = new Date(year, month - 1, day);
       return date.toLocaleDateString('pt-BR');
     } catch (e) {
       return 'Data inválida';

@@ -9,9 +9,7 @@ import { SpeedInsights } from "@vercel/speed-insights/next"
 createRoot(document.getElementById('root')!).render(
   <StrictMode>
     <Router>
-      <AuthProvider>
-        <App />
-      </AuthProvider>
+      <App />
     </Router>
   </StrictMode>
 );
