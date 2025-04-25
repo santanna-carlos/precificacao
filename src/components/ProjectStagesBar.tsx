@@ -78,7 +78,7 @@ export const ProjectStagesBar: React.FC<ProjectStagesBarProps> = ({
       try {
         const { data, error } = await supabase
           .from('projects')
-          .select('id, estimated_completion_date')
+          .select('id, estimated_completion_date, stages')
           .not('id', 'eq', projectId) // Excluir o projeto atual
           .not('estimated_completion_date', 'is', null) // Apenas projetos com data de entrega
           .order('estimated_completion_date', { ascending: true });
@@ -88,8 +88,28 @@ export const ProjectStagesBar: React.FC<ProjectStagesBarProps> = ({
           return;
         }
         
-        // Extrair apenas as datas
-        const dates = data
+        // Filtrar apenas projetos em andamento (não concluídos e não cancelados)
+        const inProgressProjects = data.filter(project => {
+          // Verificar se o projeto está cancelado
+          if (project.stages?.projetoCancelado?.completed) {
+            return false;
+          }
+          
+          // Verificar se o projeto foi concluído (instalação completa)
+          if (project.stages?.instalacao?.completed) {
+            return false;
+          }
+          
+          // Verificar se o projeto está em andamento (não apenas orçamento)
+          const hasAnyNonOrcamentoStageCompleted = Object.entries(project.stages || {}).some(
+            ([key, stage]) => key !== 'orcamento' && stage.completed
+          );
+          
+          return hasAnyNonOrcamentoStageCompleted;
+        });
+        
+        // Extrair apenas as datas dos projetos em andamento
+        const dates = inProgressProjects
           .filter(project => project.estimated_completion_date)
           .map(project => project.estimated_completion_date);
         
@@ -358,13 +378,17 @@ export const ProjectStagesBar: React.FC<ProjectStagesBarProps> = ({
     }
   };
 
-  const openDatePicker = (e: React.MouseEvent<HTMLInputElement>) => {
-    // Verificar se o elemento não está desabilitado antes de chamar showPicker
-    if (!e.currentTarget.disabled) {
-      // Em vez de abrir o calendário nativo, mostrar nosso calendário personalizado
-      e.preventDefault();
-      setShowDeliveryCalendar(true);
+  // Função para abrir o calendário personalizado e definir o mês correto
+  const openDatePicker = () => {
+    // Se já existe uma data selecionada, abrir o calendário nesse mês/ano
+    if (estimatedCompletionDate) {
+      const [year, month, day] = estimatedCompletionDate.split('-').map(Number);
+      setCurrentViewDate(new Date(year, month - 1, day));
+    } else {
+      // Caso contrário, abrir no mês atual
+      setCurrentViewDate(new Date());
     }
+    setShowDeliveryCalendar(true);
   };
 
   // Função para impedir a digitação direta, permitindo apenas a navegação e a seleção
@@ -578,32 +602,30 @@ export const ProjectStagesBar: React.FC<ProjectStagesBarProps> = ({
                 <label htmlFor={`estimatedDate-${projectId}`} className="text-xs text-gray-600 mr-2 ml-1 whitespace-nowrap hidden sm:inline">
                   Data prevista:
                 </label>
-                <div className="relative">
-                  <div className="flex items-center">
-                    <input
-                      type="text" 
-                      id={`estimatedDate-${projectId}`}
-                      value={estimatedCompletionDate}
-                      readOnly // Tornar somente leitura para forçar uso do calendário personalizado
-                      placeholder="AAAA-MM-DD"
-                      className="text-xs border border-gray-300 rounded-md p-1 focus:outline-none focus:ring-1 focus:ring-blue-500 w-24"
-                      onClick={() => setShowDeliveryCalendar(true)}
-                      disabled={!isProjectTechnicalCompleted || isProjectCanceled}
-                    />
-                    <button 
-                      className="ml-1 text-gray-500 hover:text-blue-500"
-                      onClick={(e) => {
-                        e.stopPropagation();
-                        setShowDeliveryCalendar(!showDeliveryCalendar);
-                      }}
-                      disabled={!isProjectTechnicalCompleted || isProjectCanceled}
-                      aria-label="Abrir calendário personalizado"
-                    >
-                      <Calendar size={16} />
-                    </button>
-                  </div>
-                  {renderDeliveryCalendar()}
+                <div className="flex items-center relative">
+                  <input
+                    type="text" 
+                    id={`estimatedDate-${projectId}`}
+                    value={estimatedCompletionDate}
+                    readOnly // Tornar somente leitura para forçar uso do calendário personalizado
+                    placeholder="AAAA-MM-DD"
+                    className="text-xs border border-gray-300 rounded-md p-1 focus:outline-none focus:ring-1 focus:ring-blue-500 w-24"
+                    onClick={openDatePicker}
+                    disabled={!isProjectTechnicalCompleted || isProjectCanceled}
+                  />
+                  <button 
+                    className="h-full ml-1 text-gray-500 hover:text-blue-500"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      openDatePicker();
+                    }}
+                    disabled={!isProjectTechnicalCompleted || isProjectCanceled}
+                    aria-label="Abrir calendário personalizado"
+                  >
+                    <Calendar size={16} />
+                  </button>
                 </div>
+                {renderDeliveryCalendar()}
               </div>
               {estimatedCompletionDate && (
                 <div className="flex items-center gap-2">
@@ -611,7 +633,7 @@ export const ProjectStagesBar: React.FC<ProjectStagesBarProps> = ({
                     className="px-2 py-2 rounded hover:bg-blue-100 transition"
                     title="Copiar link de acompanhamento"
                     onClick={() => {
-                      const baseUrl = "https://app.useoffi.com/tracking/";
+                      const baseUrl = "http://app.useoffi.com/tracking/";
                       const link = `${baseUrl}${encodeURIComponent(projectId)}`;
                       navigator.clipboard.writeText(link);
                       // Aqui você pode exibir um feedback visual se desejar
@@ -719,8 +741,6 @@ export const ProjectStagesBar: React.FC<ProjectStagesBarProps> = ({
                         stage.id === 'instalacao' ? 'focus:ring-green-500' : 'focus:ring-blue-500'
                       }`}
                       disabled={isProjectCanceled}
-                      onClick={openDatePicker}
-                      onKeyDown={preventDirectTyping}
                     />
                     
                     {stage.id === 'instalacao' && stageData?.completed && (
@@ -777,8 +797,6 @@ export const ProjectStagesBar: React.FC<ProjectStagesBarProps> = ({
                     onChange={(e) => handleStageChange('projetoCancelado', 'date', e.target.value)}
                     className={`w-full text-xs border ${isProjectCanceled ? 'border-red-300' : 'border-gray-300'} rounded-md p-1 focus:outline-none focus:ring-1 focus:ring-red-500`}
                     disabled={isProjectCanceled ? false : true}
-                    onClick={openDatePicker}
-                    onKeyDown={preventDirectTyping}
                   />
                   
                   {isProjectCanceled && (
@@ -863,8 +881,6 @@ export const ProjectStagesBar: React.FC<ProjectStagesBarProps> = ({
                         stage.id === 'instalacao' ? 'focus:ring-green-500' : 'focus:ring-blue-500'
                       }`}
                       disabled={isProjectCanceled}
-                      onClick={openDatePicker}
-                      onKeyDown={preventDirectTyping}
                     />
                     
                     {stage.id === 'instalacao' && stageData?.completed && (
@@ -957,8 +973,6 @@ export const ProjectStagesBar: React.FC<ProjectStagesBarProps> = ({
                         stage.id === 'instalacao' ? 'focus:ring-green-500' : 'focus:ring-blue-500'
                       }`}
                       disabled={isProjectCanceled}
-                      onClick={openDatePicker}
-                      onKeyDown={preventDirectTyping}
                     />
                     
                     {stage.id === 'instalacao' && stageData?.completed && (
@@ -1017,8 +1031,6 @@ export const ProjectStagesBar: React.FC<ProjectStagesBarProps> = ({
                     onChange={(e) => handleStageChange('projetoCancelado', 'date', e.target.value)}
                     className={`w-full text-xs border ${isProjectCanceled ? 'border-red-300' : 'border-gray-300'} rounded-md p-1 focus:outline-none focus:ring-1 focus:ring-red-500`}
                     disabled={isProjectCanceled ? false : true}
-                    onClick={openDatePicker}
-                    onKeyDown={preventDirectTyping}
                   />
                   
                   {isProjectCanceled && (
