@@ -27,6 +27,15 @@ import { useLocation } from 'react-router-dom';
 
 
 function App() {
+  return (
+    <Routes>
+      <Route path="/tracking/:id" element={<TrackingView />} />
+      <Route path="/*" element={<AuthenticatedRoot />} />
+    </Routes>
+  );
+}
+
+function AuthenticatedRoot() {
   const location = useLocation();
 
   if (location.pathname.startsWith('/tracking')) {
@@ -39,11 +48,6 @@ function App() {
     </AuthProvider>
   );
 }
-
-
-
-
-
 
 function AuthenticatedApp() {
   const { user, loading, signOut } = useAuth();
@@ -1851,13 +1855,12 @@ function AuthenticatedApp() {
         
           {/* Conteúdo principal - Rolável, com margem para a barra lateral em desktop */}
           <div className="flex-1 flex flex-col w-full md:ml-64 overflow-auto">
-            <div className={`
-              bg-[#506D67] md:bg-gray-100 
+            <div className="bg-[#506D67] md:bg-gray-100 
               text-white md:text-gray-800 
               
               w-full sticky top-0 z-10
               ${!activeProjectId && 'md:hidden'}
-            `}>
+            ">
               <div className="container mx-auto px-3 sm:px-2 py-3 sm:py-6 md:py-1 md:px-3">
                 <div className="flex items-center justify-between mb-6 md:mb-3">
                   <div className="flex items-center gap-2 sm:gap-3">
