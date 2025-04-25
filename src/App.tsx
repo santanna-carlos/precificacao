@@ -29,7 +29,7 @@ import { useLocation } from 'react-router-dom';
 function App() {
   const location = useLocation();
 
-  if (location.pathname === '/tracking') {
+  if (location.pathname.startsWith('/tracking')) {
     return <TrackingView />;
   }
 
