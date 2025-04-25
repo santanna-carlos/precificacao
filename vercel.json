@@ -1,8 +1,13 @@
 {
-  "rewrites": [
-    { "source": "/(.*)", "destination": "/index.html" }
-  ],
-  "buildCommand": "npm run build",
-  "outputDirectory": "dist",
-  "framework": "vite"
+  "functions": {
+    "api/tracking.js": {
+      "runtime": "edge"
+    }
+  },
+  "routes": [
+    {
+      "src": "^/tracking/([a-zA-Z0-9\\-]+)$",
+      "dest": "api/tracking.js"
+    }
+  ]
 }
