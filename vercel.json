@@ -1,9 +1,4 @@
 {
-  "functions": {
-    "api/tracking.js": {
-      "runtime": "edge"
-    }
-  },
   "routes": [
     {
       "src": "^/tracking/([a-zA-Z0-9\\-]+)$",
