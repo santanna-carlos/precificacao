@@ -192,8 +192,8 @@ export const PROJECT_STAGES = [
   { id: 'fitamento', label: 'Fitamento' },
   { id: 'furacaoUsinagem', label: 'Usinagem' },
   { id: 'preMontagem', label: 'Pré-Montagem' },
-  { id: 'acabamento', label: 'Acabamento' },
-  { id: 'entrega', label: 'Entrega' },
-  { id: 'instalacao', label: 'Instalação' },
+  { id: 'acabamento', label: 'Entrega' }, //alterei label para Entrega
+  { id: 'entrega', label: 'Instalação' }, //alterei label para Instalação
+  { id: 'instalacao', label: 'Acabamento' }, //alterei label para Acabamento
   { id: 'projetoCancelado', label: 'Pedido Cancelado' }
 ];
