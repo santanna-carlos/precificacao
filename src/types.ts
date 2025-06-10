@@ -165,7 +165,7 @@ export const EXPENSE_OPTIONS = {
     'Corte',
     'Dobradiças',
     'Fita de Borda',
-    'Fitamento',
+    'Filetamento',
     'Kit Porta',
     'Parafusos',
     'Puxadores',
@@ -189,7 +189,7 @@ export const PROJECT_STAGES = [
   { id: 'orcamento', label: 'Orçamento' },
   { id: 'projetoTecnico', label: 'Projeto Técnico' },
   { id: 'corte', label: 'Corte' },
-  { id: 'fitamento', label: 'Fitamento' },
+  { id: 'fitamento', label: 'Filetamento' },
   { id: 'furacaoUsinagem', label: 'Usinagem' },
   { id: 'preMontagem', label: 'Pré-Montagem' },
   { id: 'acabamento', label: 'Entrega' }, //alterei label para Entrega
