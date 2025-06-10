@@ -189,7 +189,7 @@ export const PROJECT_STAGES = [
   { id: 'orcamento', label: 'Orçamento' },
   { id: 'projetoTecnico', label: 'Projeto Técnico' },
   { id: 'corte', label: 'Corte' },
-  { id: 'fitamento', label: 'Filetamento' },
+  { id: 'fitamento', label: 'Filetamento' }, //alterei label de Fitamento para Filetamento
   { id: 'furacaoUsinagem', label: 'Usinagem' },
   { id: 'preMontagem', label: 'Pré-Montagem' },
   { id: 'acabamento', label: 'Entrega' }, //alterei label para Entrega
