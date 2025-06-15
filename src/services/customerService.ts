@@ -4,13 +4,18 @@ import { asaasRequest } from './asaasClient';
 interface CustomerData {
   name: string;
   email: string;
-  phone?: string;
-  cpfCnpj?: string;
+  cpfCnpj: string;
+  mobilePhone?: string;
+  postalCode?: string;
+  addressNumber?: string;
+  complement?: string;
 }
 
 export async function createCustomer(data: CustomerData) {
-  return asaasRequest('/customers', {
+  const response = await asaasRequest('/customers', {
     method: 'POST',
     body: JSON.stringify(data),
   });
+
+  return response;
 }

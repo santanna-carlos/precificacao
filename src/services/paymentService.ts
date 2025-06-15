@@ -1,30 +1,30 @@
 // src/services/paymentService.ts
+
 import { asaasRequest } from './asaasClient';
 
-interface PaymentData {
+interface CreatePaymentData {
   customer: string;
-  billingType: 'CREDIT_CARD' | 'BOLETO' | 'PIX';
   value: number;
-  dueDate: string; // formato 'YYYY-MM-DD'
-  description?: string;
+  dueDate: string; // no formato "YYYY-MM-DD"
   successUrl: string;
 }
 
-export async function createPayment(data: PaymentData) {
+export async function createPayment({ customer, value, dueDate, successUrl }: CreatePaymentData) {
   const payload = {
-    customer: data.customer,
-    billingType: data.billingType,
-    value: data.value,
-    dueDate: data.dueDate,
-    description: data.description,
+    customer,
+    billingType: 'CREDIT_CARD',  // pode mudar para BOLETO ou PIX
+    value,
+    dueDate,
     callback: {
-      successUrl: data.successUrl,
+      successUrl,
       autoRedirect: true,
     },
   };
 
-  return asaasRequest('/payments', {
+  const response = await asaasRequest('/payments', {
     method: 'POST',
     body: JSON.stringify(payload),
   });
+
+  return response;
 }

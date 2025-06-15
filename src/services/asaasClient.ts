@@ -1,6 +1,7 @@
 // src/services/asaasClient.ts
-const ASAS_API_KEY = process.env.ASAS_API_KEY;
-const ASAS_BASE_URL = 'https://www.asaas.com/api/v3';
+
+const ASAS_API_KEY = import.meta.env.VITE_ASAS_API_KEY;
+const ASAS_BASE_URL = 'http://localhost:4000/api/asaas';
 
 export async function asaasRequest<T>(endpoint: string, options: RequestInit): Promise<T> {
   const response = await fetch(`${ASAS_BASE_URL}${endpoint}`, {

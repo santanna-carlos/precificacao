@@ -4,6 +4,7 @@ import { useAuth } from '../contexts/AuthContext';
 import { Link } from 'react-router-dom';
 import { AlertTriangle } from 'lucide-react';
 import { FaWhatsapp } from 'react-icons/fa';
+import { createCustomer } from '../services/customerService';
 
 export function Signup() {
   const { signUp } = useAuth();
@@ -19,6 +20,7 @@ export function Signup() {
   const [error, setError] = useState<string | null>(null);
   const [success, setSuccess] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [asaasError, setAsaasError] = useState<string | null>(null);
 
   const handleSignup = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -41,23 +43,46 @@ export function Signup() {
     try {
       setLoading(true);
       setError(null);
-      
-      // Aqui você pode adicionar os novos campos ao cadastro
-      const { error, data } = await signUp(email, password, name, {
+      setAsaasError(null);
+
+      // 1. Cadastro no Asaas (primeiro!)
+      try {
+        await createCustomer({
+          name,
+          email,
+          cpfCnpj,
+          mobilePhone: phone,
+          postalCode: cep,
+          addressNumber,
+          complement: addressComplement
+        });
+      } catch (asaasErr: any) {
+        setError('Erro ao integrar com o Asaas. Cadastro não realizado. Entre em contato com o suporte.');
+        setSuccess(false);
+        setLoading(false);
+        return;
+      }
+
+      // 2. Cadastro no seu sistema (Supabase)
+      const { error } = await signUp(email, password, name, {
         cpfCnpj,
         phone,
         cep,
         addressNumber,
         addressComplement
       });
-      
+
       if (error) {
         setError(error.message || 'Erro ao criar conta');
-      } else {
-        setSuccess(true);
+        setSuccess(false);
+        setLoading(false);
+        return;
       }
+
+      setSuccess(true);
     } catch (err) {
       setError('Ocorreu um erro ao tentar criar sua conta');
+      setSuccess(false);
       console.error(err);
     } finally {
       setLoading(false);
@@ -114,7 +139,7 @@ export function Signup() {
                   <FaWhatsapp size={20} className="text-white" />
                   Suporte
                 </a>
-</div>
+              </div>
             </div>
           ) : (
             <form onSubmit={handleSignup} className="space-y-4">
