@@ -385,7 +385,7 @@ export default function Dashboard({
           </div>
           
           {/* Métricas de tempo e conversão - agora mostradas abaixo das entregas */}
-          <div className="mt-3 flex flex-col gap-1 text-sm p-3 border rounded border-gray-200 bg-gray-50">
+          <div className="mt-3 flex flex-col gap-1 text-sm p-3 border rounded border-orange-300 bg-orange-50">
             <div className="text-base font-bold mb-1 text-gray-900">Métricas:</div>
             <div>
               <b className="text-gray-600">Tempo médio de conversão:</b> {avgConversion} dias
@@ -465,7 +465,7 @@ export default function Dashboard({
             <div className="flex flex-col items-center">
               <div className="text-sm font-medium text-gray-600 mb-1">Valor total de Projetos em Andamento</div>
               <div className="text-2xl md:text-2xl sm:text-3xl font-bold bg-gradient-to-r from-green-500 to-emerald-600 bg-clip-text text-transparent">
-                R$ {totalInProgressValue.toLocaleString("pt-BR", { minimumFractionDigits: 2 })}
+                R$ {totalInProgressValue.toLocaleString("pt-BR", { minimumFractionDigits: 2, maximumFractionDigits: 2 })}
               </div>
               <div className="mt-2 text-xs text-gray-500">
                 Total de {groupedProjects.inProgress.length} projeto{groupedProjects.inProgress.length !== 1 ? 's' : ''} em andamento

@@ -3,9 +3,21 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recha
 import { ProjectSummary } from '../types';
 import { Save } from 'lucide-react';
 
-// Função para formatar valores monetários com vírgula
+// Função para formatar valores monetários com vírgula e separadores de milhar
 const formatCurrency = (value: number): string => {
-  return value.toFixed(2).replace('.', ',');
+  // Formata o número com 2 casas decimais
+  const formattedValue = value.toFixed(2);
+  
+  // Separa a parte inteira da parte decimal
+  const parts = formattedValue.split('.');
+  const integerPart = parts[0];
+  const decimalPart = parts[1];
+  
+  // Adiciona separadores de milhar (pontos) na parte inteira
+  const integerWithSeparator = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  
+  // Retorna o valor formatado com vírgula como separador decimal
+  return integerWithSeparator + ',' + decimalPart;
 };
 
 interface SummaryProps {

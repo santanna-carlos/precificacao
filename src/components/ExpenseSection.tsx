@@ -4,7 +4,19 @@ import { ExpenseItem, ExpenseType, EXPENSE_OPTIONS } from '../types';
 
 // Função para formatar valores monetários com vírgula
 const formatCurrency = (value: number): string => {
-  return value.toFixed(2).replace('.', ',');
+  // Formata o número com 2 casas decimais
+  const formattedValue = value.toFixed(2);
+  
+  // Separa a parte inteira da parte decimal
+  const parts = formattedValue.split('.');
+  const integerPart = parts[0];
+  const decimalPart = parts[1];
+  
+  // Adiciona separadores de milhar (pontos) na parte inteira
+  const integerWithSeparator = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  
+  // Retorna o valor formatado com vírgula como separador decimal
+  return integerWithSeparator + ',' + decimalPart;
 };
 
 interface ExpenseSectionProps {
@@ -38,6 +50,10 @@ export function ExpenseSection({
 }: ExpenseSectionProps) {
   // Estado local para controlar se usa as configurações da marcenaria ou entrada manual
   const [useAutoCalculation, setUseAutoCalculation] = useState(useWorkshopSettings);
+  
+  // Estado local para armazenar os valores exibidos nos inputs
+  // Este estado permite manter a entrada do usuário com vírgulas durante a digitação
+  const [displayValues, setDisplayValues] = useState<Record<string, string>>({});
   
   // Verifica se é a seção de despesas fixas e se deve usar as configurações da marcenaria
   const isFixedExpenseWithWorkshopSettings = type === 'fixed' && useAutoCalculation;
@@ -203,7 +219,12 @@ export function ExpenseSection({
                     <tr key={item.id} className="border-b">
                       <td className="px-2 sm:px-4 py-2">
                         <select
-                          value={item.customType && (EXPENSE_OPTIONS as { [key: string]: string[] })[type]?.includes(item.customType as any) ? item.customType : item.type}
+                          value={
+                            item.customType && 
+                            (EXPENSE_OPTIONS as { [key: string]: string[] })[type]?.includes(item.customType as any) 
+                              ? item.customType 
+                              : item.customType ? 'Outros' : item.type
+                          }
                           onChange={(e) => {
                             if (disabled) return;
                             
@@ -229,8 +250,11 @@ export function ExpenseSection({
                           ))}
                           <option value="Outros">Outros</option>
                         </select>
-                        {/* Campo para customização quando selecionar "Outros" */}
-                        {item.type === 'Outros' && (
+                        {/* Campo para customização quando selecionar "Outros" ou quando tiver customType que não está nas opções padrão */}
+                        {(item.type === 'Outros' || 
+                          (item.customType && 
+                           !(EXPENSE_OPTIONS as { [key: string]: string[] })[type]?.includes(item.customType as any))
+                        ) && (
                           <input
                             type="text"
                             value={item.customType || ''}
@@ -269,23 +293,39 @@ export function ExpenseSection({
                           type={type === 'material' || type === 'variable' || type === 'fixed' ? "text" : "number"}
                           min="0"
                           step="0.01"
-                          value={item.unitValue}
+                          // Usar o valor do estado local de exibição, se disponível, ou formatar o valor do item
+                          value={
+                            displayValues[item.id]?.length >= 0 
+                              ? displayValues[item.id] 
+                              : item.unitValue === 0 ? '' : String(item.unitValue).replace('.', ',')
+                          }
                           onChange={(e) => {
                             if (disabled) return;
                             
                             if (type === 'material' || type === 'variable' || type === 'fixed') {
-                              // Convertendo vírgulas para pontos antes da validação
-                              const inputValue = e.target.value.replace(',', '.');
+                              // Regex que permite apenas números e até uma vírgula
+                              // Aceita valores como: "123", "123,", "123,45"
+                              const regex = /^(\d*),?(\d*)$/;
                               
-                              // Usando a mesma regex original que aceita ponto decimal
-                              const regex = /^(\d*\.?\d*)?$/;
-                              
-                              if (regex.test(inputValue)) {
-                                // Salvando o valor com ponto para manter compatibilidade
-                                onChange(item.id, 'unitValue', inputValue);
+                              if (regex.test(e.target.value) || e.target.value === '') {
+                                // Atualizar apenas o estado local para exibição
+                                setDisplayValues(prev => ({
+                                  ...prev,
+                                  [item.id]: e.target.value
+                                }));
                               }
                             } else {
                               onChange(item.id, 'unitValue', e.target.value);
+                            }
+                          }}
+                          // Quando o input perde o foco, atualizamos o estado global com o valor convertido
+                          onBlur={() => {
+                            if (type === 'material' || type === 'variable' || type === 'fixed') {
+                              const inputValue = displayValues[item.id] || '';
+                              // Converter vírgula para ponto para armazenamento
+                              const valueForStorage = inputValue.replace(',', '.');
+                              // Atualizar o estado no componente pai
+                              onChange(item.id, 'unitValue', valueForStorage);
                             }
                           }}
                           disabled={disabled}

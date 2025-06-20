@@ -3,6 +3,23 @@ import { Building2, PlusCircle, Trash2, Save, Calendar, Loader2 } from 'lucide-r
 import { getProjects, updateProject } from '../services/projectService';
 import { getProjectStatus } from './Dashboard'; // ajuste o caminho se necessário
 
+// Função para formatar valores monetários com vírgula (padrão brasileiro)
+const formatCurrency = (value: number): string => {
+  // Formata o número com 2 casas decimais
+  const formattedValue = value.toFixed(2);
+  
+  // Separa a parte inteira da parte decimal
+  const parts = formattedValue.split('.');
+  const integerPart = parts[0];
+  const decimalPart = parts[1];
+  
+  // Adiciona separadores de milhar (pontos) na parte inteira
+  const integerWithSeparator = integerPart.replace(/\B(?=(\d{3})+(?!\d))/g, '.');
+  
+  // Retorna o valor formatado com vírgula como separador decimal
+  return integerWithSeparator + ',' + decimalPart;
+};
+
 // Lista de despesas fixas comuns em marcenarias
 const COMMON_WORKSHOP_EXPENSES = [
   "Água",
@@ -56,6 +73,9 @@ export const MyWorkshop: React.FC<MyWorkshopProps> = ({ workshopSettings, onSave
   const [workingDaysInput, setWorkingDaysInput] = useState<string>(
     workshopSettings?.workingDaysPerMonth?.toString() || '22'
   );
+  
+  // Estado para valores exibidos nos inputs monetários (com vírgula)
+  const [displayValues, setDisplayValues] = useState<Record<string, string>>({});
   
   // Estado para indicador de carregamento
   const [isSaving, setIsSaving] = useState<boolean>(false);
@@ -202,7 +222,7 @@ export const MyWorkshop: React.FC<MyWorkshopProps> = ({ workshopSettings, onSave
             <div>
               <p className="text-sm font-medium text-gray-600">Total de Despesas Mensais</p>
               <p className="text-2xl font-bold text-indigo-700">
-                R$ {totalMonthlyExpenses.toFixed(2)}
+                R$ {formatCurrency(totalMonthlyExpenses)}
               </p>
             </div>
             
@@ -210,7 +230,7 @@ export const MyWorkshop: React.FC<MyWorkshopProps> = ({ workshopSettings, onSave
               <p className="text-sm font-medium text-gray-600">Custo Diário</p>
               <div className="flex items-baseline">
                 <span className="text-2xl font-bold text-green-600">
-                  R$ {calculateDailyCost().toFixed(2)}
+                  R$ {formatCurrency(calculateDailyCost())}
                 </span>
                 <span className="ml-2 text-xs text-gray-500">/dia</span>
               </div>
@@ -222,7 +242,7 @@ export const MyWorkshop: React.FC<MyWorkshopProps> = ({ workshopSettings, onSave
               <p className="text-sm font-medium text-gray-600">Valor Hora (8h/dia)</p>
               <div className="flex items-baseline">
                 <span className="text-2xl font-bold text-blue-600">
-                  R$ {calculateHourlyCost().toFixed(2)}
+                  R$ {formatCurrency(calculateHourlyCost())}
                 </span>
                 <span className="ml-2 text-xs text-gray-500">/hora</span>
               </div>
@@ -443,51 +463,62 @@ export const MyWorkshop: React.FC<MyWorkshopProps> = ({ workshopSettings, onSave
                         <input
                           type="text"
                           inputMode="decimal"
-                          value={expense.unitValue !== undefined && expense.unitValue !== null ? (expense.unitValue === 0 ? "" : expense.unitValue.toString()) : ""}
+                          value={
+                            displayValues[expense.id] !== undefined 
+                              ? displayValues[expense.id] 
+                              : expense.unitValue === 0 ? "" : String(expense.unitValue).replace('.', ',')
+                          }
                           onFocus={(e) => {
                             if (expense.unitValue === 0) {
-                              e.target.value = "";
+                              setDisplayValues(prev => ({
+                                ...prev,
+                                [expense.id]: ""
+                              }));
+                            } else if (displayValues[expense.id] === undefined) {
+                              setDisplayValues(prev => ({
+                                ...prev,
+                                [expense.id]: String(expense.unitValue).replace('.', ',')
+                              }));
                             }
                           }}
                           onBlur={(e) => {
-                            if (e.target.value === "") {
+                            const inputValue = displayValues[expense.id] || "";
+                            if (inputValue === "") {
                               handleUpdateExpense(index, { ...expense, unitValue: 0 });
+                              setDisplayValues(prev => ({
+                                ...prev,
+                                [expense.id]: ""
+                              }));
+                            } else {
+                              // Converter vírgula para ponto para armazenamento
+                              const valueForStorage = inputValue.replace(',', '.');
+                              const numericValue = parseFloat(valueForStorage);
+                              handleUpdateExpense(index, { 
+                                ...expense, 
+                                unitValue: isNaN(numericValue) ? 0 : numericValue
+                              });
                             }
                           }}
                           onChange={(e) => {
                             const value = e.target.value;
-                            // Permite dígitos, ponto ou vírgula como separador decimal
-                            const numericValue = value.replace(/[^\d.,]/g, '');
+                            // Regex que permite apenas números e até uma vírgula
+                            // Aceita valores como: "123", "123,", "123,45"
+                            const regex = /^(\d*),?(\d*)$/;
                             
-                            // Substitui vírgula por ponto para processamento
-                            const normalizedValue = numericValue.replace(',', '.');
-                            
-                            // Garante que haja apenas um ponto decimal
-                            const parts = normalizedValue.split('.');
-                            let formattedValue = parts[0];
-                            
-                            // Remove zeros à esquerda, exceto se for um número decimal como 0.xx
-                            if (parts[0] !== '0' || parts.length === 1) {
-                              formattedValue = formattedValue.replace(/^0+/, '');
+                            if (regex.test(value) || value === '') {
+                              // Atualizar apenas o estado local para exibição
+                              setDisplayValues(prev => ({
+                                ...prev,
+                                [expense.id]: value
+                              }));
                             }
-                            
-                            // Adiciona a parte decimal se existir
-                            if (parts.length > 1) {
-                              formattedValue += '.' + parts.slice(1).join('');
-                            }
-                            
-                            // Atualiza o valor no estado
-                            handleUpdateExpense(index, { 
-                              ...expense, 
-                              unitValue: formattedValue === '' ? 0 : parseFloat(formattedValue)
-                            });
                           }}
                           className="w-full p-1.5 sm:p-2 pl-7 sm:pl-8 text-xs sm:text-sm border border-gray-300 rounded-md focus:outline-none focus:ring-1 focus:ring-blue-500"
                         />
                       </div>
                     </td>
                     <td className="px-3 sm:px-4 py-2 sm:py-3 font-medium text-gray-900 text-xs sm:text-sm">
-                      R$ {((expense.quantity || 0) * (expense.unitValue || 0)).toFixed(2)}
+                      R$ {formatCurrency((expense.quantity || 0) * (expense.unitValue || 0))}
                     </td>
                     <td className="px-2 sm:px-4 py-2 sm:py-3 text-center">
                       <button
@@ -509,7 +540,7 @@ export const MyWorkshop: React.FC<MyWorkshopProps> = ({ workshopSettings, onSave
                     Total Mensal:
                   </td>
                   <td className="px-3 sm:px-4 py-2 sm:py-3 text-sm sm:text-base font-bold text-gray-900">
-                    R$ {totalMonthlyExpenses.toFixed(2)}
+                    R$ {formatCurrency(totalMonthlyExpenses)}
                   </td>
                   <td></td>
                 </tr>
