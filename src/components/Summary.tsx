@@ -34,6 +34,8 @@ interface SummaryProps {
   // Adicionar valores congelados de imposto
   frozenTaxPercentage?: number;
   frozenApplyTax?: boolean;
+  frozenTaxAmount?: number; // Novo: valor fixo do imposto quando congelado
+  frozenFinalPrice?: number; // Novo: preço final congelado
   isProjectTechnicalCompleted?: boolean; // Indica se o projeto técnico está concluído
 }
 
@@ -52,6 +54,8 @@ export function Summary({
   onApplyTaxChange,
   frozenTaxPercentage,
   frozenApplyTax,
+  frozenTaxAmount,
+  frozenFinalPrice,
   isProjectTechnicalCompleted = false
 }: SummaryProps) {
   // Se não tiver onApplyTaxChange, usar estado local para compatibilidade
@@ -69,10 +73,12 @@ export function Summary({
     ? frozenApplyTax
     : effectiveApplyTax;
   
-  // Calcular o valor do imposto se aplicável - aplicado sobre o custo total, não sobre o preço final
-  const taxAmount = effectiveApplyTaxFinal && effectiveTaxPercentage > 0 
-    ? summary.totalCost * (effectiveTaxPercentage / 100) 
-    : 0;
+  // Calcular o valor do imposto se aplicável - usar valor congelado se disponível
+  const taxAmount = isProjectTechnicalCompleted && frozenTaxAmount !== undefined
+    ? frozenTaxAmount
+    : (effectiveApplyTaxFinal && effectiveTaxPercentage > 0 
+      ? summary.totalCost * (effectiveTaxPercentage / 100) 
+      : 0);
   
   // Custo total incluindo imposto (nova base para o cálculo do lucro)
   const costWithTax = summary.totalCost + taxAmount;
@@ -91,8 +97,13 @@ export function Summary({
   // Usar o preço apropriado com base no tipo selecionado
   const basePrice = priceType === 'normal' ? recalculatedSalePrice : markupPrice;
   
-  // Preço final com imposto já incluído no cálculo
-  const displayPrice = basePrice;
+  // Preço sem imposto - para exibição como "Valor base" no card de imposto
+  const priceWithoutTax = basePrice - taxAmount;
+  
+  // Preço final com imposto já incluído no cálculo - usar valor congelado se disponível
+  const displayPrice = isProjectTechnicalCompleted && frozenFinalPrice !== undefined
+    ? frozenFinalPrice
+    : basePrice;
   
   // Valor total sem imposto (original)
   const totalValue = summary.totalCost + summary.profitAmount;
@@ -337,15 +348,15 @@ export function Summary({
                       </span>
                     </label>
                     
-                    {isProjectTechnicalCompleted && frozenTaxPercentage !== undefined
+                    {isProjectTechnicalCompleted && frozenTaxAmount !== undefined
                       ? <div className="mt-2 text-xs">
                           <div className="flex justify-between">
                             <span className="text-gray-600">Valor base:</span>
-                            <span>R$ {formatCurrency(basePrice)}</span>
+                            <span>R$ {formatCurrency(priceWithoutTax)}</span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-gray-600">Imposto ({frozenTaxPercentage}% sobre o custo total):</span>
-                            <span className="text-orange-600">+ R$ {formatCurrency(taxAmount)}</span>
+                            <span className="text-gray-600">Imposto ({effectiveTaxPercentage.toFixed(1).replace('.', ',')}% sobre o custo total):</span>
+                            <span className="text-orange-600">+ R$ {formatCurrency(frozenTaxAmount)}</span>
                           </div>
                           <div className="flex justify-between font-medium pt-1 border-t border-blue-100">
                             <span>Total com imposto:</span>
@@ -356,10 +367,10 @@ export function Summary({
                         <div className="mt-2 text-xs">
                           <div className="flex justify-between">
                             <span className="text-gray-600">Valor base:</span>
-                            <span>R$ {formatCurrency(basePrice)}</span>
+                            <span>R$ {formatCurrency(priceWithoutTax)}</span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-gray-600">Imposto ({taxPercentage}% sobre o custo total):</span>
+                            <span className="text-gray-600">Imposto ({effectiveTaxPercentage.toFixed(1).replace('.', ',')}% sobre o custo total):</span>
                             <span className="text-orange-600">+ R$ {formatCurrency(taxAmount)}</span>
                           </div>
                           <div className="flex justify-between font-medium pt-1 border-t border-blue-100">
