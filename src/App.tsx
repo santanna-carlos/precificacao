@@ -795,6 +795,10 @@ function AuthenticatedApp() {
         console.log(`Valor diário congelado: ${frozenValue}`);
       }
       
+      // Obter os valores atuais de imposto para congelar
+      const currentTaxPercentage = workshopSettings?.taxPercentage || 0;
+      const currentApplyTax = currentProject?.applyTax || false;
+      
       const updatedStages = {
         ...projectStages,
         [stageId]: {
@@ -811,6 +815,9 @@ function AuthenticatedApp() {
         ...currentProject!,
         stages: updatedStages,
         frozenDailyCost: frozenValue,
+        // Congelar também os valores de imposto
+        frozenTaxPercentage: currentTaxPercentage,
+        frozenApplyTax: currentApplyTax,
         lastModified: new Date().toISOString()
       };
       
@@ -830,6 +837,9 @@ function AuthenticatedApp() {
           fixedExpenseDays: fixedExpenseDays,
           useWorkshopForFixedExpenses: useWorkshopForFixedExpenses,
           frozenDailyCost: frozenValue,
+          // Congelar também os valores de imposto
+          frozenTaxPercentage: currentTaxPercentage,
+          frozenApplyTax: currentApplyTax,
           estimatedCompletionDate: estimatedCompletionDate,
           lastSaved: new Date().toISOString()
         };
@@ -2233,6 +2243,22 @@ function AuthenticatedApp() {
                           onSaveProject={handleSaveProject}
                           priceType={priceType}
                           onPriceTypeChange={setPriceType}
+                          taxPercentage={workshopSettings?.taxPercentage}
+                          applyTax={activeProjectId ? projects.find(p => p.id === activeProjectId)?.applyTax || false : false}
+                          onApplyTaxChange={(apply) => {
+                            if (activeProjectId) {
+                              const updatedProjects = projects.map(p => 
+                                p.id === activeProjectId ? { ...p, applyTax: apply } : p
+                              );
+                              setProjects(updatedProjects);
+                              
+                              // Salvar no localStorage para persistência imediata
+                              localStorage.setItem('projects', JSON.stringify(updatedProjects));
+                              
+                              // Marcar que há alterações não salvas
+                              setHasUnsavedChanges(true);
+                            }
+                          }}
                         />
                         <div className="mt-2 text-xs text-gray-400 text-right">
                           {activeProjectId && (

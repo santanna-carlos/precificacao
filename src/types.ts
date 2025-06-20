@@ -63,6 +63,10 @@ export interface Project {
   priceType?: 'normal' | 'markup'; // Tipo de preço selecionado (normal ou com markup)
   estimatedCompletionDate?: string; // Data prevista para finalização do projeto
   dailySalary?: number; // Valor do salário diário específico do projeto
+  taxPercentage?: number; // Porcentagem de imposto tributado no CNPJ
+  applyTax?: boolean; // Indica se o imposto deve ser aplicado no preço final
+  frozenTaxPercentage?: number; // Valor congelado da porcentagem de imposto quando o projeto técnico for aprovado
+  frozenApplyTax?: boolean; // Valor congelado da decisão de aplicar imposto quando o projeto técnico for aprovado
 }
 
 export interface ProjectSummary {
@@ -192,8 +196,8 @@ export const PROJECT_STAGES = [
   { id: 'fitamento', label: 'Fitamento' },
   { id: 'furacaoUsinagem', label: 'Usinagem' },
   { id: 'preMontagem', label: 'Pré-Montagem' },
-  { id: 'acabamento', label: 'Acabamento' }, //alterar label para Entrega
-  { id: 'entrega', label: 'Entrega' }, //alterar label para Instalação
-  { id: 'instalacao', label: 'Instalação' }, //alterar label para Acabamento
+  { id: 'acabamento', label: 'Entrega' }, 
+  { id: 'entrega', label: 'Instalação' }, 
+  { id: 'instalacao', label: 'Acabamento' }, 
   { id: 'projetoCancelado', label: 'Pedido Cancelado' }
 ];
