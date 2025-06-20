@@ -799,6 +799,28 @@ function AuthenticatedApp() {
       const currentTaxPercentage = workshopSettings?.taxPercentage || 0;
       const currentApplyTax = currentProject?.applyTax || false;
       
+      const currentSummary = calculateSummary(currentProject!.id);
+      let frozenTaxAmount = 0;
+      
+      if (currentApplyTax && currentTaxPercentage > 0) {
+        frozenTaxAmount = currentSummary.totalCost * (currentTaxPercentage / 100);
+      }
+      
+      // Calcular o preço final para congelar
+      let frozenFinalPrice = 0;
+      const costWithTax = currentSummary.totalCost + frozenTaxAmount;
+      
+      if (priceType === 'normal') {
+        // Preço com margem de lucro
+        const profitAmount = profitMargin > 0 
+          ? (costWithTax * profitMargin / (100 - profitMargin))
+          : 0;
+        frozenFinalPrice = costWithTax + profitAmount;
+      } else {
+        // Preço com markup
+        frozenFinalPrice = costWithTax * currentSummary.markup;
+      }
+      
       const updatedStages = {
         ...projectStages,
         [stageId]: {
@@ -818,6 +840,8 @@ function AuthenticatedApp() {
         // Congelar também os valores de imposto
         frozenTaxPercentage: currentTaxPercentage,
         frozenApplyTax: currentApplyTax,
+        frozenTaxAmount: frozenTaxAmount, // Adicionar o valor congelado do imposto
+        frozenFinalPrice: frozenFinalPrice, // Adicionar o preço final congelado
         lastModified: new Date().toISOString()
       };
       
@@ -840,6 +864,8 @@ function AuthenticatedApp() {
           // Congelar também os valores de imposto
           frozenTaxPercentage: currentTaxPercentage,
           frozenApplyTax: currentApplyTax,
+          frozenTaxAmount: frozenTaxAmount, // Adicionar o valor congelado do imposto
+          frozenFinalPrice: frozenFinalPrice, // Adicionar o preço final congelado
           estimatedCompletionDate: estimatedCompletionDate,
           lastSaved: new Date().toISOString()
         };
@@ -1454,6 +1480,9 @@ function AuthenticatedApp() {
       setClientName('');
       setContactPhone('');
       setProjectDate(new Date().toISOString().split('T')[0]);
+      setFixedExpenses([]);
+      setVariableExpenses([]);
+      setMaterials([]);
       setProjectComments('');
       setProjectStages({
         orcamento: { completed: false, date: null },
@@ -2235,7 +2264,7 @@ function AuthenticatedApp() {
 
                     <div className="lg:col-span-1 order-2 lg:order-2">
                       <div className="lg:sticky lg:top-4">
-                        <Summary 
+                      <Summary 
                           summary={calculateSummary()} 
                           profitMargin={profitMargin}
                           onProfitMarginChange={setProfitMargin}
@@ -2259,6 +2288,12 @@ function AuthenticatedApp() {
                               setHasUnsavedChanges(true);
                             }
                           }}
+                          // Passar propriedades congeladas para o Summary
+                          isProjectTechnicalCompleted={activeProjectId && projects.find(p => p.id === activeProjectId)?.stages?.projetoTecnico?.completed}
+                          frozenTaxPercentage={activeProjectId ? projects.find(p => p.id === activeProjectId)?.frozenTaxPercentage : undefined}
+                          frozenApplyTax={activeProjectId ? projects.find(p => p.id === activeProjectId)?.frozenApplyTax : undefined}
+                          frozenTaxAmount={activeProjectId ? projects.find(p => p.id === activeProjectId)?.frozenTaxAmount : undefined}
+                          frozenFinalPrice={activeProjectId ? projects.find(p => p.id === activeProjectId)?.frozenFinalPrice : undefined}
                         />
                         <div className="mt-2 text-xs text-gray-400 text-right">
                           {activeProjectId && (
