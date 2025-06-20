@@ -1,4 +1,4 @@
-import React from 'react';
+import React, { useState } from 'react';
 import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recharts';
 import { ProjectSummary } from '../types';
 import { Save } from 'lucide-react';
@@ -23,11 +23,18 @@ const formatCurrency = (value: number): string => {
 interface SummaryProps {
   summary: ProjectSummary;
   profitMargin: number;
-  onProfitMarginChange: (value: number) => void;
-  onSaveProject?: () => void; 
-  isDisabled?: boolean; 
-  priceType: 'normal' | 'markup'; 
-  onPriceTypeChange: (type: 'normal' | 'markup') => void; 
+  onProfitMarginChange: (profit: number) => void;
+  onSaveProject?: () => void;
+  isDisabled?: boolean;
+  priceType?: 'normal' | 'markup';
+  onPriceTypeChange?: (type: 'normal' | 'markup') => void;
+  taxPercentage?: number;
+  applyTax?: boolean;
+  onApplyTaxChange?: (apply: boolean) => void;
+  // Adicionar valores congelados de imposto
+  frozenTaxPercentage?: number;
+  frozenApplyTax?: boolean;
+  isProjectTechnicalCompleted?: boolean; // Indica se o projeto técnico está concluído
 }
 
 const COLORS = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042'];
@@ -39,31 +46,90 @@ export function Summary({
   onSaveProject, 
   isDisabled = false,
   priceType = 'normal',
-  onPriceTypeChange
+  onPriceTypeChange,
+  taxPercentage = 0, // Valor padrão de 0%
+  applyTax = false, // Valor padrão false
+  onApplyTaxChange,
+  frozenTaxPercentage,
+  frozenApplyTax,
+  isProjectTechnicalCompleted = false
 }: SummaryProps) {
+  // Se não tiver onApplyTaxChange, usar estado local para compatibilidade
+  const [localApplyTax, setLocalApplyTax] = useState(applyTax);
+  
+  // Usar a propriedade do projeto se disponível, caso contrário usar o estado local
+  const effectiveApplyTax = onApplyTaxChange ? applyTax : localApplyTax;
+  
+  // Usar valores congelados se o projeto técnico estiver concluído
+  const effectiveTaxPercentage = isProjectTechnicalCompleted && frozenTaxPercentage !== undefined 
+    ? frozenTaxPercentage 
+    : taxPercentage;
+    
+  const effectiveApplyTaxFinal = isProjectTechnicalCompleted && frozenApplyTax !== undefined
+    ? frozenApplyTax
+    : effectiveApplyTax;
+  
+  // Calcular o valor do imposto se aplicável - aplicado sobre o custo total, não sobre o preço final
+  const taxAmount = effectiveApplyTaxFinal && effectiveTaxPercentage > 0 
+    ? summary.totalCost * (effectiveTaxPercentage / 100) 
+    : 0;
+  
+  // Custo total incluindo imposto (nova base para o cálculo do lucro)
+  const costWithTax = summary.totalCost + taxAmount;
+  
+  // Recalcular a margem de lucro sobre o novo custo total (incluindo imposto)
+  const recalculatedProfitAmount = profitMargin > 0 
+    ? (costWithTax * profitMargin / (100 - profitMargin))
+    : 0;
+    
+  // Preço final recalculado considerando o imposto como parte do custo
+  const recalculatedSalePrice = costWithTax + recalculatedProfitAmount;
+  
   // Calcular o preço com markup (custo total * fator de markup)
-  const markupPrice = summary.totalCost * summary.markup;
+  const markupPrice = costWithTax * summary.markup;
   
   // Usar o preço apropriado com base no tipo selecionado
-  const displayPrice = priceType === 'normal' ? summary.salePrice : markupPrice;
+  const basePrice = priceType === 'normal' ? recalculatedSalePrice : markupPrice;
   
+  // Preço final com imposto já incluído no cálculo
+  const displayPrice = basePrice;
+  
+  // Valor total sem imposto (original)
   const totalValue = summary.totalCost + summary.profitAmount;
   
-  const data = [
-    { name: 'Despesas Fixas', value: summary.fixedExpensesTotal },
-    { name: 'Despesas Variáveis', value: summary.variableExpensesTotal },
-    { name: 'Materiais', value: summary.materialsTotal },
-    { name: 'Lucro', value: summary.profitAmount },
-  ];
+  // Valor total com imposto e lucro recalculado
+  const totalValueWithTax = costWithTax + recalculatedProfitAmount;
+
+  // Cores para o gráfico
+  const COLORS_WITH_TAX = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#FF5733'];
+  
+  // Array de dados para o gráfico, incluindo imposto quando aplicável
+  const data = effectiveApplyTaxFinal && taxAmount > 0
+    ? [
+        { name: 'Despesas Fixas', value: summary.fixedExpensesTotal },
+        { name: 'Despesas Variáveis', value: summary.variableExpensesTotal },
+        { name: 'Materiais', value: summary.materialsTotal },
+        { name: 'Imposto', value: taxAmount },
+        { name: 'Lucro', value: recalculatedProfitAmount },
+      ]
+    : [
+        { name: 'Despesas Fixas', value: summary.fixedExpensesTotal },
+        { name: 'Despesas Variáveis', value: summary.variableExpensesTotal },
+        { name: 'Materiais', value: summary.materialsTotal },
+        { name: 'Lucro', value: summary.profitAmount },
+      ];
+
+  // Selecionar o conjunto de cores apropriado
+  const chartColors = effectiveApplyTaxFinal && taxAmount > 0 ? COLORS_WITH_TAX : COLORS;
 
   const renderLegend = () => (
     <ul className="flex flex-col gap-1 sm:gap-2">
       {data.map((entry, index) => (
         <li key={`legend-${index}`} className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
-          <span className="w-3 h-3 sm:w-4 sm:h-4 rounded-sm" style={{ backgroundColor: COLORS[index] }} />
+          <span className="w-3 h-3 sm:w-4 sm:h-4 rounded-sm" style={{ backgroundColor: chartColors[index] }} />
           <span className="flex-1">{entry.name}</span>
           <span className="font-medium">
-            {totalValue > 0 ? `${((entry.value / totalValue) * 100).toFixed(1).replace('.', ',')}%` : '0%'}
+            {totalValueWithTax > 0 ? `${((entry.value / totalValueWithTax) * 100).toFixed(1).replace('.', ',')}%` : '0%'}
           </span>
         </li>
       ))}
@@ -86,7 +152,7 @@ export function Summary({
                 <div className="text-right">
                   <div>R$ {formatCurrency(summary.fixedExpensesTotal)}</div>
                   <div className="text-gray-500 text-2xs sm:text-xs">
-                    {totalValue > 0 ? `${((summary.fixedExpensesTotal / totalValue) * 100).toFixed(1).replace('.', ',')}%` : '0%'}
+                    {totalValueWithTax > 0 ? `${((summary.fixedExpensesTotal / totalValueWithTax) * 100).toFixed(1).replace('.', ',')}%` : '0%'}
                   </div>
                 </div>
               </div>
@@ -95,7 +161,7 @@ export function Summary({
                 <div className="text-right">
                   <div>R$ {formatCurrency(summary.variableExpensesTotal)}</div>
                   <div className="text-gray-500 text-2xs sm:text-xs">
-                    {totalValue > 0 ? `${((summary.variableExpensesTotal / totalValue) * 100).toFixed(1).replace('.', ',')}%` : '0%'}
+                    {totalValueWithTax > 0 ? `${((summary.variableExpensesTotal / totalValueWithTax) * 100).toFixed(1).replace('.', ',')}%` : '0%'}
                   </div>
                 </div>
               </div>
@@ -104,7 +170,7 @@ export function Summary({
                 <div className="text-right">
                   <div>R$ {formatCurrency(summary.materialsTotal)}</div>
                   <div className="text-gray-500 text-2xs sm:text-xs">
-                    {totalValue > 0 ? `${((summary.materialsTotal / totalValue) * 100).toFixed(1).replace('.', ',')}%` : '0%'}
+                    {totalValueWithTax > 0 ? `${((summary.materialsTotal / totalValueWithTax) * 100).toFixed(1).replace('.', ',')}%` : '0%'}
                   </div>
                 </div>
               </div>
@@ -113,7 +179,31 @@ export function Summary({
                 <div className="text-right">
                   <div>R$ {formatCurrency(summary.totalCost)}</div>
                   <div className="text-gray-500 text-2xs sm:text-xs">
-                    {totalValue > 0 ? `${((summary.totalCost / totalValue) * 100).toFixed(1).replace('.', ',')}%` : '0%'}
+                    {totalValueWithTax > 0 ? `${((summary.totalCost / totalValueWithTax) * 100).toFixed(1).replace('.', ',')}%` : '0%'}
+                  </div>
+                </div>
+              </div>
+              
+              {/* Adicionar linha para imposto */}
+              {effectiveApplyTaxFinal && taxAmount > 0 && (
+                <div className="flex justify-between text-xs sm:text-sm">
+                  <span className="text-gray-600">Imposto:</span>
+                  <div className="text-right">
+                    <div>R$ {formatCurrency(taxAmount)}</div>
+                    <div className="text-gray-500 text-2xs sm:text-xs">
+                      {totalValueWithTax > 0 ? `${((taxAmount / totalValueWithTax) * 100).toFixed(1).replace('.', ',')}%` : '0%'}
+                    </div>
+                  </div>
+                </div>
+              )}
+              
+              {/* Adicionar linha para lucro */}
+              <div className="flex justify-between text-xs sm:text-sm">
+                <span className="text-gray-600">Lucro:</span>
+                <div className="text-right">
+                  <div>R$ {formatCurrency(recalculatedProfitAmount)}</div>
+                  <div className="text-gray-500 text-2xs sm:text-xs">
+                    {totalValueWithTax > 0 ? `${((recalculatedProfitAmount / totalValueWithTax) * 100).toFixed(1).replace('.', ',')}%` : '0%'}
                   </div>
                 </div>
               </div>
@@ -159,10 +249,10 @@ export function Summary({
                 Preço de Venda
               </label>
               <div className="text-lg sm:text-xl font-medium text-green-600">
-                R$ {formatCurrency(summary.salePrice)}
+                R$ {formatCurrency(recalculatedSalePrice)}
               </div>
               <div className="text-xs text-gray-500 mt-1">
-                Margem de Lucro: {profitMargin}%
+                Margem de Lucro: {profitMargin}% (sobre custo + imposto)
               </div>
             </div>
             
@@ -195,7 +285,7 @@ export function Summary({
                     onChange={() => onPriceTypeChange('normal')}
                     disabled={isDisabled}
                   />
-                  <span className="ml-2 text-xs sm:text-sm">Preço de Venda (R$ {formatCurrency(summary.salePrice)})</span>
+                  <span className="ml-2 text-xs sm:text-sm">Preço de Venda (R$ {formatCurrency(recalculatedSalePrice)})</span>
                 </label>
                 <label className="inline-flex items-center">
                   <input
@@ -219,6 +309,67 @@ export function Summary({
                 <div className="text-lg sm:text-xl font-bold text-blue-800">
                   R$ {formatCurrency(displayPrice)}
                 </div>
+                
+                {/* Opção para aplicar imposto */}
+                {(taxPercentage > 0 || (isProjectTechnicalCompleted && frozenTaxPercentage && frozenTaxPercentage > 0)) && (
+                  <div className="mt-3 pt-2 border-t border-blue-100">
+                    <label className="flex items-center text-xs sm:text-sm">
+                      <input
+                        type="checkbox"
+                        checked={isProjectTechnicalCompleted ? frozenApplyTax : effectiveApplyTax}
+                        onChange={(e) => {
+                          if (isProjectTechnicalCompleted) {
+                            // Se o projeto técnico estiver concluído, não permitir alteração
+                            return;
+                          }
+                          
+                          if (onApplyTaxChange) {
+                            onApplyTaxChange(e.target.checked);
+                          } else {
+                            setLocalApplyTax(e.target.checked);
+                          }
+                        }}
+                        className="mr-2 h-4 w-4 text-blue-600 border-gray-300 rounded focus:ring-blue-500"
+                        disabled={isDisabled || isProjectTechnicalCompleted} // Desabilitar se o projeto técnico estiver concluído
+                      />
+                      <span className="ml-2 text-sm">
+                        {isProjectTechnicalCompleted ? "Imposto aplicado (fixo)" : "Aplicar imposto"}
+                      </span>
+                    </label>
+                    
+                    {isProjectTechnicalCompleted && frozenTaxPercentage !== undefined
+                      ? <div className="mt-2 text-xs">
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Valor base:</span>
+                            <span>R$ {formatCurrency(basePrice)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Imposto ({frozenTaxPercentage}% sobre o custo total):</span>
+                            <span className="text-orange-600">+ R$ {formatCurrency(taxAmount)}</span>
+                          </div>
+                          <div className="flex justify-between font-medium pt-1 border-t border-blue-100">
+                            <span>Total com imposto:</span>
+                            <span>R$ {formatCurrency(displayPrice)}</span>
+                          </div>
+                        </div>
+                      : effectiveApplyTax && taxAmount > 0 && (
+                        <div className="mt-2 text-xs">
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Valor base:</span>
+                            <span>R$ {formatCurrency(basePrice)}</span>
+                          </div>
+                          <div className="flex justify-between">
+                            <span className="text-gray-600">Imposto ({taxPercentage}% sobre o custo total):</span>
+                            <span className="text-orange-600">+ R$ {formatCurrency(taxAmount)}</span>
+                          </div>
+                          <div className="flex justify-between font-medium pt-1 border-t border-blue-100">
+                            <span>Total com imposto:</span>
+                            <span>R$ {formatCurrency(displayPrice)}</span>
+                          </div>
+                        </div>
+                      )}
+                  </div>
+                )}
               </div>
             </div>
           </div>
@@ -246,7 +397,7 @@ export function Summary({
                     dataKey="value"
                   >
                     {data.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={COLORS[index % COLORS.length]} />
+                      <Cell key={`cell-${index}`} fill={chartColors[index % chartColors.length]} />
                     ))}
                   </Pie>
                   <Tooltip 
@@ -254,7 +405,7 @@ export function Summary({
                       // Usar o nome da categoria em vez do termo genérico "Valor"
                       const entry = data.find(item => item.value === value);
                       return [
-                        `${totalValue > 0 ? ((value / totalValue) * 100).toFixed(1).replace('.', ',') : 0}%`,
+                        `${totalValueWithTax > 0 ? ((value / totalValueWithTax) * 100).toFixed(1).replace('.', ',') : 0}%`,
                         entry ? entry.name : 'Valor'
                       ];
                     }}
@@ -272,7 +423,7 @@ export function Summary({
               <h3 className="font-medium text-gray-700 mb-2 sm:mb-3 text-sm sm:text-base">Adicional de Markup</h3>
               <div className="flex justify-between font-medium text-sm sm:text-lg">
                 <span>Valor adicional:</span>
-                <span className="text-green-600">R$ {formatCurrency(markupPrice - summary.salePrice)}</span>
+                <span className="text-green-600">R$ {formatCurrency(markupPrice - recalculatedSalePrice)}</span>
               </div>
               <div className="text-2xs sm:text-sm text-gray-500 mt-1 sm:mt-2">
                 Valor extra em relação ao preço de venda normal
