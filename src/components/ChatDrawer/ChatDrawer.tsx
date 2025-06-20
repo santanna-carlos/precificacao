@@ -57,22 +57,35 @@ const ChatDrawer: React.FC = () => {
 
   // ➜ 2. envia msg + sessionId ao n8n
   const handleSend = async (msg: string) => {
-    if (!sessionId) return; // ainda não temos ID
-
+    if (!sessionId) return;
+  
+    // ► adiciona bolha do usuário
     setMessages(prev => [...prev, { role: 'user', content: msg }]);
     setLoading(true);
-
+  
     try {
       const resp = await fetch('https://n8n.espacoharmonia.com/webhook/chat', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ sessionId, message: msg }),
       });
-
-      const replyText = await resp.text();
-      setMessages(prev => [...prev, { role: 'agent', content: replyText }]);
+  
+      if (!resp.ok) throw new Error('HTTP ' + resp.status);
+  
+      // ► agora esperamos um array JSON: [{text:"..."}, ...]
+      const botMsgs: { text: string }[] = await resp.json();
+  
+      const delay = (ms: number) => new Promise(r => setTimeout(r, ms));
+  
+      for (const m of botMsgs) {
+        setMessages(prev => [...prev, { role: 'agent', content: m.text }]);
+        await delay(700);   // (remova se não quiser atraso)
+      }
     } catch (e) {
-      setMessages(prev => [...prev, { role: 'agent', content: '⚠️ Erro ao conectar com o assistente.' }]);
+      setMessages(prev => [
+        ...prev,
+        { role: 'agent', content: '⚠️ Erro ao conectar com o assistente.' },
+      ]);
     }
     setLoading(false);
   };
