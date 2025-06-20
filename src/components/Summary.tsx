@@ -3,6 +3,11 @@ import { PieChart, Pie, Cell, ResponsiveContainer, Legend, Tooltip } from 'recha
 import { ProjectSummary } from '../types';
 import { Save } from 'lucide-react';
 
+// Função para formatar valores monetários com vírgula
+const formatCurrency = (value: number): string => {
+  return value.toFixed(2).replace('.', ',');
+};
+
 interface SummaryProps {
   summary: ProjectSummary;
   profitMargin: number;
@@ -46,7 +51,7 @@ export function Summary({
           <span className="w-3 h-3 sm:w-4 sm:h-4 rounded-sm" style={{ backgroundColor: COLORS[index] }} />
           <span className="flex-1">{entry.name}</span>
           <span className="font-medium">
-            {totalValue > 0 ? `${((entry.value / totalValue) * 100).toFixed(1)}%` : '0%'}
+            {totalValue > 0 ? `${((entry.value / totalValue) * 100).toFixed(1).replace('.', ',')}%` : '0%'}
           </span>
         </li>
       ))}
@@ -67,36 +72,36 @@ export function Summary({
               <div className="flex justify-between text-xs sm:text-sm">
                 <span className="text-gray-600">Despesas Fixas:</span>
                 <div className="text-right">
-                  <div>R$ {summary.fixedExpensesTotal.toFixed(2)}</div>
+                  <div>R$ {formatCurrency(summary.fixedExpensesTotal)}</div>
                   <div className="text-gray-500 text-2xs sm:text-xs">
-                    {totalValue > 0 ? `${((summary.fixedExpensesTotal / totalValue) * 100).toFixed(1)}%` : '0%'}
+                    {totalValue > 0 ? `${((summary.fixedExpensesTotal / totalValue) * 100).toFixed(1).replace('.', ',')}%` : '0%'}
                   </div>
                 </div>
               </div>
               <div className="flex justify-between text-xs sm:text-sm">
                 <span className="text-gray-600">Despesas Variáveis:</span>
                 <div className="text-right">
-                  <div>R$ {summary.variableExpensesTotal.toFixed(2)}</div>
+                  <div>R$ {formatCurrency(summary.variableExpensesTotal)}</div>
                   <div className="text-gray-500 text-2xs sm:text-xs">
-                    {totalValue > 0 ? `${((summary.variableExpensesTotal / totalValue) * 100).toFixed(1)}%` : '0%'}
+                    {totalValue > 0 ? `${((summary.variableExpensesTotal / totalValue) * 100).toFixed(1).replace('.', ',')}%` : '0%'}
                   </div>
                 </div>
               </div>
               <div className="flex justify-between text-xs sm:text-sm">
                 <span className="text-gray-600">Materiais:</span>
                 <div className="text-right">
-                  <div>R$ {summary.materialsTotal.toFixed(2)}</div>
+                  <div>R$ {formatCurrency(summary.materialsTotal)}</div>
                   <div className="text-gray-500 text-2xs sm:text-xs">
-                    {totalValue > 0 ? `${((summary.materialsTotal / totalValue) * 100).toFixed(1)}%` : '0%'}
+                    {totalValue > 0 ? `${((summary.materialsTotal / totalValue) * 100).toFixed(1).replace('.', ',')}%` : '0%'}
                   </div>
                 </div>
               </div>
               <div className="flex justify-between font-medium pt-1 sm:pt-2 border-t text-xs sm:text-sm">
                 <span>Custo Total:</span>
                 <div className="text-right">
-                  <div>R$ {summary.totalCost.toFixed(2)}</div>
+                  <div>R$ {formatCurrency(summary.totalCost)}</div>
                   <div className="text-gray-500 text-2xs sm:text-xs">
-                    {totalValue > 0 ? `${((summary.totalCost / totalValue) * 100).toFixed(1)}%` : '0%'}
+                    {totalValue > 0 ? `${((summary.totalCost / totalValue) * 100).toFixed(1).replace('.', ',')}%` : '0%'}
                   </div>
                 </div>
               </div>
@@ -142,7 +147,7 @@ export function Summary({
                 Preço de Venda
               </label>
               <div className="text-lg sm:text-xl font-medium text-green-600">
-                R$ {summary.salePrice.toFixed(2)}
+                R$ {formatCurrency(summary.salePrice)}
               </div>
               <div className="text-xs text-gray-500 mt-1">
                 Margem de Lucro: {profitMargin}%
@@ -155,10 +160,10 @@ export function Summary({
                 Preço com Markup
               </label>
               <div className="text-lg sm:text-xl font-medium text-green-600">
-                R$ {markupPrice.toFixed(2)}
+                R$ {formatCurrency(markupPrice)}
               </div>
               <div className="text-xs text-gray-500 mt-1">
-                Markup: {summary.totalCost > 0 ? summary.markup.toFixed(2) : '1.00'}x sobre o custo total
+                Markup: {summary.totalCost > 0 ? formatCurrency(summary.markup) : '1,00'}x sobre o custo total
               </div>
             </div>
             
@@ -178,7 +183,7 @@ export function Summary({
                     onChange={() => onPriceTypeChange('normal')}
                     disabled={isDisabled}
                   />
-                  <span className="ml-2 text-xs sm:text-sm">Preço de Venda (R$ {summary.salePrice.toFixed(2)})</span>
+                  <span className="ml-2 text-xs sm:text-sm">Preço de Venda (R$ {formatCurrency(summary.salePrice)})</span>
                 </label>
                 <label className="inline-flex items-center">
                   <input
@@ -191,7 +196,7 @@ export function Summary({
                     disabled={isDisabled}
                   />
                   <span className="ml-2 text-xs sm:text-sm">
-                    Preço com Markup (R$ {markupPrice.toFixed(2)})
+                    Preço com Markup (R$ {formatCurrency(markupPrice)})
                   </span>
                 </label>
               </div>
@@ -200,7 +205,7 @@ export function Summary({
               <div className="mt-3 p-2 bg-blue-50 rounded-md border border-blue-100">
                 <div className="text-xs font-medium text-blue-700">Preço selecionado:</div>
                 <div className="text-lg sm:text-xl font-bold text-blue-800">
-                  R$ {displayPrice.toFixed(2)}
+                  R$ {formatCurrency(displayPrice)}
                 </div>
               </div>
             </div>
@@ -237,7 +242,7 @@ export function Summary({
                       // Usar o nome da categoria em vez do termo genérico "Valor"
                       const entry = data.find(item => item.value === value);
                       return [
-                        `${totalValue > 0 ? ((value / totalValue) * 100).toFixed(1) : 0}%`,
+                        `${totalValue > 0 ? ((value / totalValue) * 100).toFixed(1).replace('.', ',') : 0}%`,
                         entry ? entry.name : 'Valor'
                       ];
                     }}
@@ -255,7 +260,7 @@ export function Summary({
               <h3 className="font-medium text-gray-700 mb-2 sm:mb-3 text-sm sm:text-base">Adicional de Markup</h3>
               <div className="flex justify-between font-medium text-sm sm:text-lg">
                 <span>Valor adicional:</span>
-                <span className="text-green-600">R$ {(markupPrice - summary.salePrice).toFixed(2)}</span>
+                <span className="text-green-600">R$ {formatCurrency(markupPrice - summary.salePrice)}</span>
               </div>
               <div className="text-2xs sm:text-sm text-gray-500 mt-1 sm:mt-2">
                 Valor extra em relação ao preço de venda normal

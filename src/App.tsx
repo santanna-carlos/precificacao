@@ -24,6 +24,8 @@ import { getClients, createClient, updateClient, deleteClient } from './services
 import { getWorkshopSettings, saveWorkshopSettings } from './services/workshopService';
 import { useLocation } from 'react-router-dom';
 import { getProjectStatus } from './components/ProjectsKanban';
+import ChatDrawer from './components/ChatDrawer/ChatDrawer';
+
 
 
 
@@ -2277,6 +2279,7 @@ function AuthenticatedApp() {
           </div>
         </div>
       )}
+    {!loading && user && <ChatDrawer />}
     </>
   );
 }

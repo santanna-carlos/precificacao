@@ -2,6 +2,10 @@ import React, { useEffect, useState } from 'react';
 import { PlusCircle, Trash2, Settings, ToggleLeft, ToggleRight, Lock } from 'lucide-react';
 import { ExpenseItem, ExpenseType, EXPENSE_OPTIONS } from '../types';
 
+// Função para formatar valores monetários com vírgula
+const formatCurrency = (value: number): string => {
+  return value.toFixed(2).replace('.', ',');
+};
 
 interface ExpenseSectionProps {
   title: string;
@@ -155,7 +159,7 @@ export function ExpenseSection({
               </div>
               <div className="flex flex-wrap items-center gap-2 mt-1">
                 <span className={`text-gray-600 ${disabled ? 'font-medium' : ''}`}>
-                  Custo diário: R$ {dailyCost.toFixed(2)}
+                  Custo diário: R$ {formatCurrency(dailyCost)}
                 </span>
                 <span className="text-gray-600">×</span>
                 <span className={`text-gray-600 ${disabled ? 'font-medium' : ''}`}>
@@ -163,7 +167,7 @@ export function ExpenseSection({
                 </span>
                 <span className="text-gray-600">=</span>
                 <span className={`font-semibold ${disabled ? 'text-orange-600' : 'text-green-700'}`}>
-                  R$ {displayTotal.toFixed(2)}
+                  R$ {formatCurrency(displayTotal)}
                 </span>
               </div>
             </div>
@@ -270,10 +274,15 @@ export function ExpenseSection({
                             if (disabled) return;
                             
                             if (type === 'material' || type === 'variable' || type === 'fixed') {
-                              // Validação regex para permitir apenas números, ponto decimal ou vazio
+                              // Convertendo vírgulas para pontos antes da validação
+                              const inputValue = e.target.value.replace(',', '.');
+                              
+                              // Usando a mesma regex original que aceita ponto decimal
                               const regex = /^(\d*\.?\d*)?$/;
-                              if (regex.test(e.target.value)) {
-                                onChange(item.id, 'unitValue', e.target.value);
+                              
+                              if (regex.test(inputValue)) {
+                                // Salvando o valor com ponto para manter compatibilidade
+                                onChange(item.id, 'unitValue', inputValue);
                               }
                             } else {
                               onChange(item.id, 'unitValue', e.target.value);
@@ -284,7 +293,7 @@ export function ExpenseSection({
                         />
                       </td>
                       <td className="px-2 sm:px-4 py-2 text-right text-xs sm:text-sm font-medium">
-                        R$ {itemTotal.toFixed(2)}
+                        R$ {formatCurrency(itemTotal)}
                       </td>
                       <td className="px-2 sm:px-4 py-2 text-center">
                         <button
@@ -306,7 +315,7 @@ export function ExpenseSection({
                     Total:
                   </td>
                   <td className="px-2 sm:px-4 py-2 text-right font-bold text-xs sm:text-sm">
-                    R$ {displayTotal.toFixed(2)}
+                    R$ {formatCurrency(displayTotal)}
                   </td>
                   <td></td>
                 </tr>
