@@ -1,5 +1,5 @@
 import React, { useState, useRef, useEffect } from 'react';
-import { MessageCircle, X, Loader2 } from 'lucide-react';
+import { X, Loader2 } from 'lucide-react';
 import ChatInput from './ChatInput';
 import ChatMessage from './ChatMessage';
 
@@ -12,6 +12,7 @@ const ChatDrawer: React.FC = () => {
   const [messages, setMessages] = useState<{ role: 'user' | 'agent'; content: string }[]>([]);
   const [loading, setLoading] = useState(false);
   const [sessionId, setSessionId] = useState<string | null>(null);
+  const [showBalloon, setShowBalloon] = useState(false);
   const drawerRef = useRef<HTMLDivElement>(null);
   const messagesEndRef = useRef<HTMLDivElement>(null);
 
@@ -25,6 +26,16 @@ const ChatDrawer: React.FC = () => {
       localStorage.setItem('chat-session-id', id);
       setSessionId(id);
     }
+  }, []);
+
+  // Mostrar balão temporário por 5 segundos
+  useEffect(() => {
+    setShowBalloon(true);
+    const timer = setTimeout(() => {
+      setShowBalloon(false);
+    }, 8000);
+    
+    return () => clearTimeout(timer);
   }, []);
 
   // fecha quando clica fora
@@ -80,16 +91,16 @@ const ChatDrawer: React.FC = () => {
           }}
         >
           <button
-            className="bg-blue-600 hover:bg-blue-700 text-white p-3.5 rounded-full transition-all transform hover:scale-110 flex items-center justify-center"
+            className="bg-green-600 hover:bg-green-700 text-white p-1 rounded-full transition-all transform hover:scale-110 flex items-center justify-center"
             aria-label="Abrir chat com IA"
             onClick={() => setOpen(true)}
-            style={{ width: '56px', height: '56px', animation: 'pulse 2s infinite ease-in-out' }}
+            style={{ width: '70px', height: '70px', animation: 'pulse 2s infinite ease-in-out' }}
           >
-            <MessageCircle size={26} strokeWidth={2} />
+            <img src="/imagens/jesus.png" alt="Jesus" width="60" height="60" />
             <style jsx>{`
               @keyframes pulse {
                 0% {
-                  box-shadow: 0 0 0 0 rgba(37, 99, 235, 0.7);
+                  box-shadow: 0 0 0 0 rgba(19, 78, 7, 0.7);
                 }
                 70% {
                   box-shadow: 0 0 0 10px rgba(37, 99, 235, 0);
@@ -100,6 +111,52 @@ const ChatDrawer: React.FC = () => {
               }
             `}</style>
           </button>
+          
+          {/* Balão de mensagem */}
+          {showBalloon && (
+            <div 
+              className="absolute bg-white text-gray-800 p-3 rounded-lg shadow-lg"
+              style={{
+                bottom: '80px',
+                right: '0',
+                width: '180px',
+                borderRadius: '12px',
+                animation: 'fadeIn 0.5s',
+                border: '1px solid #e2e8f0'
+              }}
+            >
+              <div className="text-sm font-medium">Se precisar de ajuda, estou aqui!</div>
+              <div 
+                style={{
+                  position: 'absolute',
+                  bottom: '-10px',
+                  right: '30px',
+                  width: '20px',
+                  height: '10px',
+                  overflow: 'hidden'
+                }}
+              >
+                <div 
+                  style={{
+                    position: 'absolute',
+                    transform: 'translateY(-50%) rotate(45deg)',
+                    width: '14px',
+                    height: '14px',
+                    backgroundColor: 'white',
+                    border: '1px solid #e2e8f0',
+                    borderTop: 'none',
+                    borderLeft: 'none'
+                  }}
+                />
+              </div>
+              <style jsx>{`
+                @keyframes fadeIn {
+                  from { opacity: 0; transform: translateY(10px); }
+                  to { opacity: 1; transform: translateY(0); }
+                }
+              `}</style>
+            </div>
+          )}
         </div>
       )}
 
