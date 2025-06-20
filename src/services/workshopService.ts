@@ -8,6 +8,7 @@ const workshopToDbFormat = (workshop: WorkshopSettings, userId?: string) => {
     workshopName: workshop.workshopName || '', // Garantir que nunca seja null
     logoImage: workshop.logoImage,
     lastUpdated: workshop.lastUpdated,
+    tax_percentage: workshop.taxPercentage // Adicionando o campo de porcentagem de imposto
   };
   
   // Adicionar user_id apenas se fornecido (para não sobrescrever o valor existente em atualizações)
@@ -29,6 +30,7 @@ const dbToWorkshopFormat = (dbWorkshop: any, expenses: WorkshopExpense[]): Works
     logoImage: dbWorkshop.logoImage,
     lastUpdated: dbWorkshop.lastUpdated || new Date().toISOString(),
     expenses: expenses || [], // Garantir que nunca seja null
+    taxPercentage: dbWorkshop.tax_percentage || 0 // Adicionando o campo de porcentagem de imposto
   };
 };
 
@@ -257,6 +259,8 @@ export const saveWorkshopSettings = async (settings: WorkshopSettings): Promise<
 
 // Função para obter as configurações da marcenaria
 export const getWorkshopSettings = async (): Promise<{ data: WorkshopSettings | null, error: any }> => {
+  let workshopSettings: WorkshopSettings | null = null;
+  
   try {
     // Obter o usuário atual
     const { data: { user } } = await supabase.auth.getUser();
@@ -281,7 +285,63 @@ export const getWorkshopSettings = async (): Promise<{ data: WorkshopSettings | 
     const settings = settingsArray && settingsArray.length > 0 ? settingsArray[0] : null;
     if (!settings) {
       console.log('Nenhuma configuração encontrada para o usuário:', user.id);
-      return { data: null, error: null };
+      
+      // Verificar se temos dados no localStorage
+      const cachedSettings = localStorage.getItem('cachedWorkshopSettings');
+      
+      if (cachedSettings) {
+        try {
+          const parsedData = JSON.parse(cachedSettings);
+          
+          // Verificar se os dados em cache ainda são válidos (opcional)
+          const cacheValid = true; // Adicione sua lógica de validação de cache aqui se necessário
+          
+          if (cacheValid) {
+            console.log('Usando dados em cache do localStorage:', parsedData);
+            workshopSettings = parsedData;
+          } else {
+            console.log('Dados em cache expirados, usando valores padrão');
+            workshopSettings = {
+              workingDaysPerMonth: 22,
+              workshopName: '',
+              logoImage: undefined,
+              expenses: [],
+              taxPercentage: 0,
+              lastUpdated: new Date().toISOString()
+            };
+          }
+        } catch (parseError) {
+          console.error('Erro ao analisar dados em cache:', parseError);
+          workshopSettings = {
+            workingDaysPerMonth: 22,
+            workshopName: '',
+            logoImage: undefined,
+            expenses: [],
+            taxPercentage: 0,
+            lastUpdated: new Date().toISOString()
+          };
+        }
+      } else {
+        // If no data in localStorage, create default settings
+        workshopSettings = {
+          workingDaysPerMonth: 22,
+          workshopName: '',
+          logoImage: undefined,
+          expenses: [],
+          taxPercentage: 0,
+          lastUpdated: new Date().toISOString()
+        };
+      }
+      
+      // Salvar as configurações padrão no localStorage para uso futuro
+      if (!localStorage.getItem('cachedWorkshopSettings')) {
+        console.log('[WorkshopSettings] Salvando defaultSettings no localStorage pois não havia dados prévios.');
+        localStorage.setItem('cachedWorkshopSettings', JSON.stringify(workshopSettings));
+      } else {
+        console.log('[WorkshopSettings] NÃO sobrescreveu localStorage, pois já havia dados salvos.');
+      }
+      
+      return { data: workshopSettings, error: null };
     }
 
     console.log('Configurações encontradas:', settings);
@@ -290,39 +350,29 @@ export const getWorkshopSettings = async (): Promise<{ data: WorkshopSettings | 
     const expenses = await getWorkshopExpenses(settings.id);
     return { data: dbToWorkshopFormat(settings, expenses), error: null };
   } catch (error) {
-    console.error('Erro inesperado ao obter configurações da marcenaria:', error);
+    console.error('Erro ao obter configurações da marcenaria:', error);
     
-    // Verificar se temos dados no localStorage
-    const localStorageSettings = localStorage.getItem('cachedWorkshopSettings');
-    if (localStorageSettings) {
-      try {
-        const parsedSettings = JSON.parse(localStorageSettings);
-        console.log('Usando configurações do localStorage após erro:', parsedSettings);
-        return { data: parsedSettings, error: null };
-      } catch (parseError) {
-        console.error('Erro ao analisar configurações do localStorage:', parseError);
+    // Try to recover from localStorage as last resort
+    try {
+      const cachedData = localStorage.getItem('cachedWorkshopSettings');
+      if (cachedData) {
+        console.log('Recuperando de emergência dados do localStorage após erro');
+        return { data: JSON.parse(cachedData), error: null };
       }
-    }
-    
-    // Salvar as configurações padrão no localStorage para uso futuro
-    const defaultSettings = {
-      workingDaysPerMonth: 22,
-      workshopName: '',
-      logoImage: null,
-      expenses: [],
-      lastUpdated: new Date().toISOString(),
-    };
-    
-    if (!localStorage.getItem('cachedWorkshopSettings')) {
-      console.log('[WorkshopSettings] Salvando defaultSettings no localStorage pois não havia dados prévios.');
-      localStorage.setItem('cachedWorkshopSettings', JSON.stringify(defaultSettings));
-    } else {
-      console.log('[WorkshopSettings] NÃO sobrescreveu localStorage, pois já havia dados salvos.');
+    } catch (parseError) {
+      console.error('Erro ao recuperar dados em cache de emergência:', parseError);
     }
     
     return { 
-      data: defaultSettings, 
-      error: null 
+      data: {
+        workingDaysPerMonth: 22,
+        workshopName: '',
+        logoImage: undefined,
+        expenses: [],
+        taxPercentage: 0,
+        lastUpdated: new Date().toISOString()
+      }, 
+      error 
     };
   }
 };

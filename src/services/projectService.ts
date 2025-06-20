@@ -19,7 +19,10 @@ const projectToDbFormat = (project: Project) => {
     frozenDailyCost: project.frozenDailyCost,
     price_type: project.priceType,
     lastModified: project.lastModified,
-    estimated_completion_date: project.estimatedCompletionDate
+    estimated_completion_date: project.estimatedCompletionDate,
+    apply_tax: project.applyTax, // Adicionando campo para aplicar imposto
+    frozen_tax_percentage: project.frozenTaxPercentage, // Adicionando campo para taxa de imposto congelada
+    frozen_apply_tax: project.frozenApplyTax // Adicionando campo para decisão de aplicar imposto congelada
   };
 };
 
@@ -69,6 +72,10 @@ const dbToProjectFormat = (dbProject: any, expenses: ExpenseItem[]): Project => 
     frozenDailyCost: dbProject.frozenDailyCost,
     priceType: dbProject.price_type || 'normal',
     estimatedCompletionDate: estimatedDate,
+    taxPercentage: dbProject.tax_percentage || 0, // Adicionando o campo de imposto
+    applyTax: dbProject.apply_tax || false, // Adicionando campo para aplicar imposto
+    frozenTaxPercentage: dbProject.frozen_tax_percentage || 0, // Adicionando campo para taxa de imposto congelada
+    frozenApplyTax: dbProject.frozen_apply_tax || false // Adicionando campo para decisão de aplicar imposto congelada
   };
   
   // Log para verificar o objeto final
