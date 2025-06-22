@@ -64,6 +64,7 @@ function AuthenticatedApp() {
   const [showDashboard, setShowDashboard] = useState(true); // Dashboard começa visível
   const [clients, setClients] = useState<Client[]>([]);
   const [isLoadingData, setIsLoadingData] = useState(false);
+  const [isSidebarCollapsed, setIsSidebarCollapsed] = useState(false); // Novo estado para controlar se a sidebar está retraída
   
   // Função para salvar o estado de navegação no sessionStorage
   const saveNavigationState = () => {
@@ -1783,22 +1784,9 @@ function AuthenticatedApp() {
     
     setHasUnsavedChanges(hasChanges);
   }, [
-    activeProjectId,
-    projectName,
-    clientName,
-    contactPhone,
-    projectDate,
-    fixedExpenses,
-    variableExpenses,
-    materials,
-    profitMargin,
-    projectComments,
-    projectStages,
-    fixedExpenseDays,
-    useWorkshopForFixedExpenses,
-    frozenDailyCost,
-    estimatedCompletionDate,
-    projects
+    activeProjectId, projectName, clientName, contactPhone, projectDate,
+    fixedExpenses, variableExpenses, materials, profitMargin, projectComments,
+    projectStages, fixedExpenseDays, useWorkshopForFixedExpenses, frozenDailyCost, estimatedCompletionDate, projects
   ]);
 
   return (
@@ -1835,7 +1823,7 @@ function AuthenticatedApp() {
       ) : (
         <div className="flex flex-col md:flex-row min-h-screen bg-gray-100">
           {/* Sidebar - Fixa na visualização desktop */}
-          <aside className="md:fixed md:inset-y-0 md:left-0 z-50 md:flex md:flex-col">
+          <aside className={`md:fixed md:inset-y-0 md:left-0 z-50 md:flex md:flex-col ${isSidebarCollapsed ? 'md:w-20' : 'md:w-64'} transition-all duration-300`}>
             {sidebarOpen && (
               <div 
                 className="md:hidden fixed inset-0 bg-black bg-opacity-50" 
@@ -1846,7 +1834,7 @@ function AuthenticatedApp() {
             <div 
               className={`fixed md:static h-screen z-50 transform ${
                 sidebarOpen ? 'translate-x-0' : '-translate-x-full'
-              } md:translate-x-0 transition-transform duration-300 ease-in-out`}
+              } md:translate-x-0 transition-transform duration-300 ease-in-out w-full`}
               style={{ 
                 overflow: 'auto',
                 scrollbarWidth: 'thin',
@@ -1896,12 +1884,13 @@ function AuthenticatedApp() {
                 onFinancialSummaryView={handleShowFinancialSummary}
                 onUserProfileView={handleShowUserProfile}
                 onShowDashboard={handleShowDashboard}
+                onCollapseChange={setIsSidebarCollapsed} // Nova prop para receber o estado de colapso da sidebar
               />
             </div>
           </aside>
         
           {/* Conteúdo principal - Rolável, com margem para a barra lateral em desktop */}
-          <div className="flex-1 flex flex-col w-full md:ml-64 overflow-auto">
+          <div className={`flex-1 flex flex-col w-full ${isSidebarCollapsed ? 'md:ml-20' : 'md:ml-64'} overflow-auto transition-all duration-300`}>
             <div className="bg-[#506D67] md:bg-gray-100 
               text-white md:text-gray-800 
               
@@ -2027,7 +2016,7 @@ function AuthenticatedApp() {
                       </div>
                       {hasUnsavedChanges && activeProjectId && (
                         <div className="flex items-center text-sm text-white animate-pulse transition-opacity duration-1000 bg-gray-600 px-3 py-1 h-10 rounded-md">
-                          <AlertCircle size={18} className="" />
+                          <AlertCircle size={18} />
                           <span className="text-sm"></span>
                         </div>
                       )}
