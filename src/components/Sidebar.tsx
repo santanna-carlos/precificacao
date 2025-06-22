@@ -1,5 +1,5 @@
-import React, { useState } from 'react';
-import { Plus, Trash2, Users, LayoutDashboard, Building2, BarChart3, LogOut, User } from 'lucide-react';
+import React, { useState, useEffect } from 'react';
+import { Plus, Trash2, Users, LayoutDashboard, Building2, BarChart3, LogOut, User, ChevronLeft, ChevronRight } from 'lucide-react';
 import { Project, WorkshopSettings } from '../types';
 import { useAuth } from '../contexts/AuthContext';
 
@@ -18,6 +18,7 @@ interface SidebarProps {
   onUserProfileView?: () => void;
   onShowDashboard?: () => void;
   workshopSettings?: WorkshopSettings;
+  onCollapseChange?: (isCollapsed: boolean) => void;
 }
 
 export function Sidebar({
@@ -34,10 +35,47 @@ export function Sidebar({
   onFinancialSummaryView,
   onUserProfileView,
   onShowDashboard,
-  workshopSettings
+  workshopSettings,
+  onCollapseChange
 }: SidebarProps) {
   const { signOut } = useAuth();
   const [activeSection, setActiveSection] = useState('');
+  const [isCollapsed, setIsCollapsed] = useState(false);
+  const [isDesktop, setIsDesktop] = useState(window.innerWidth >= 768);
+
+  // Detectar se é desktop ou mobile
+  useEffect(() => {
+    const handleResize = () => {
+      const newIsDesktop = window.innerWidth >= 768;
+      setIsDesktop(newIsDesktop);
+      
+      // Se mudar para mobile e a sidebar estiver retraída, expandi-la automaticamente
+      if (!newIsDesktop && isCollapsed) {
+        setIsCollapsed(false);
+        // Notificar o componente pai sobre a mudança
+        if (onCollapseChange) {
+          onCollapseChange(false);
+        }
+      }
+    };
+    
+    window.addEventListener('resize', handleResize);
+    return () => window.removeEventListener('resize', handleResize);
+  }, [isCollapsed, onCollapseChange]);
+
+  // Notificar o componente pai sempre que o estado de colapso mudar
+  useEffect(() => {
+    if (onCollapseChange) {
+      onCollapseChange(isCollapsed);
+    }
+  }, [isCollapsed, onCollapseChange]);
+
+  // Função para alternar o estado de expansão da sidebar (apenas em desktop)
+  const toggleSidebar = () => {
+    if (isDesktop) {
+      setIsCollapsed(!isCollapsed);
+    }
+  };
 
   // Função para lidar com o logout
   const handleLogout = async () => {
@@ -149,21 +187,51 @@ export function Sidebar({
   };
 
   return (
-    <div className="bg-[#334B47] text-white w-64 flex flex-col h-screen shadow-xl">
+    <div className={`bg-[#334B47] text-white ${isCollapsed && isDesktop ? 'w-20' : 'w-64'} flex flex-col h-screen shadow-xl transition-width duration-300`}>
       {/* Logo e nome da marcenaria */}
-      <div className="p-5 border-b border-gray-700/50 flex flex-col items-center">
+      <div className="p-5 border-b border-gray-700/50 flex flex-col items-center relative">
+        {/* Botão para alternar a sidebar (apenas em desktop) */}
+        {isDesktop && (
+          isCollapsed ? (
+            <div className="w-full flex justify-center mb-2">
+              <button 
+                className="p-1 rounded-full bg-gray-600/50 hover:bg-gray-600 transition-colors"
+                onClick={toggleSidebar}
+                aria-label="Expandir sidebar"
+              >
+                <ChevronRight size={16} />
+              </button>
+            </div>
+          ) : (
+            <button 
+              className="absolute right-2 top-2 p-1 rounded-full bg-gray-600/50 hover:bg-gray-600 transition-colors"
+              onClick={toggleSidebar}
+              aria-label="Retrair sidebar"
+            >
+              <ChevronLeft size={16} />
+            </button>
+          )
+        )}
         <div className="my-1 overflow-hidden flex items-center justify-center">
-          <img 
-            src="/imagens/logo_cor_verde_334B47.png" 
-            alt="Logo Offi" 
-            className="w-48 h-auto object-contain"
-          />
+          {isCollapsed && isDesktop ? (
+            <img 
+              src="/imagens/icone.svg" 
+              alt="Ícone Offi" 
+              className="w-12 h-auto object-contain transition-all duration-300"
+            />
+          ) : (
+            <img 
+              src="/imagens/logo_cor_verde_334B47.png" 
+              alt="Logo Offi" 
+              className="w-48 h-auto object-contain transition-all duration-300"
+            />
+          )}
         </div>
       </div>
     
       {/* Seção Dashboard (PRIMEIRO) */}
       <div 
-        className={`px-4 py-1.5 w-full border-b border-gray-700/50 flex justify-between items-center cursor-pointer 
+        className={`px-4 py-1.5 w-full border-b border-gray-700/50 flex ${isCollapsed && isDesktop ? 'justify-center' : 'justify-between'} items-center cursor-pointer 
           transition-all duration-200 hover:bg-gray-900/50 relative overflow-hidden group
           ${activeSection === 'dashboard' ? 'bg-gray-900/80' : ''}`}
         onClick={() => {
@@ -177,18 +245,18 @@ export function Sidebar({
           }
         }}
       >
-        <div className="flex items-center gap-3 z-10">
+        <div className={`flex items-center ${isCollapsed && isDesktop ? '' : 'gap-3'} z-10`}>
           <div className="p-1.5 rounded-md bg-purple-500/20 group-hover:bg-purple-500/30 transition-colors">
             <LayoutDashboard size={18} className="text-purple-400" />
           </div>
-          <h2 className="text-base font-medium">Página Inicial</h2>
+          {(!isCollapsed || !isDesktop) && <h2 className="text-base font-medium">Dashboard</h2>}
         </div>
-        <div className="absolute left-0 h-full w-1 bg-purple-500 transform -translate-x-full group-hover:translate-x-0 transition-transform duration-200"></div>
+        {(!isCollapsed || !isDesktop) && <div className="absolute left-0 h-full w-1 bg-purple-500 transform -translate-x-full group-hover:translate-x-0 transition-transform duration-200"></div>}
       </div>
 
       {/* Seção Minha Marcenaria (SEGUNDO) */}
       <div 
-        className={`px-4 py-1.5 w-full border-b border-gray-700/50 flex justify-between items-center cursor-pointer 
+        className={`px-4 py-1.5 w-full border-b border-gray-700/50 flex ${isCollapsed && isDesktop ? 'justify-center' : 'justify-between'} items-center cursor-pointer 
           transition-all duration-200 hover:bg-gray-900/50 relative overflow-hidden group
           ${activeSection === 'myWorkshop' ? 'bg-gray-900/80' : ''}`}
         onClick={() => {
@@ -202,18 +270,18 @@ export function Sidebar({
           }
         }}
       >
-        <div className="flex items-center gap-3 z-10">
+        <div className={`flex items-center ${isCollapsed && isDesktop ? '' : 'gap-3'} z-10`}>
           <div className="p-1.5 rounded-md bg-blue-500/20 group-hover:bg-blue-500/30 transition-colors">
             <Building2 size={18} className="text-blue-400" />
           </div>
-          <h2 className="text-base font-medium">Minha Marcenaria</h2>
+          {(!isCollapsed || !isDesktop) && <h2 className="text-base font-medium">Despesas Fixas</h2>}
         </div>
-        <div className="absolute left-0 h-full w-1 bg-blue-500 transform -translate-x-full group-hover:translate-x-0 transition-transform duration-200"></div>
+        {(!isCollapsed || !isDesktop) && <div className="absolute left-0 h-full w-1 bg-blue-500 transform -translate-x-full group-hover:translate-x-0 transition-transform duration-200"></div>}
       </div>
       
       {/* Seção Resumo Financeiro (TERCEIRO) */}
       <div 
-        className={`p-4 py-1.5 border-b border-gray-700/50 flex justify-between items-center cursor-pointer 
+        className={`p-4 py-1.5 border-b border-gray-700/50 flex ${isCollapsed && isDesktop ? 'justify-center' : 'justify-between'} items-center cursor-pointer 
           transition-all duration-200 hover:bg-gray-900/50 relative overflow-hidden group
           ${activeSection === 'financialSummary' ? 'bg-gray-900/80' : ''}`}
         onClick={() => {
@@ -227,18 +295,18 @@ export function Sidebar({
           }
         }}
       >
-        <div className="flex items-center gap-3 z-10">
+        <div className={`flex items-center ${isCollapsed && isDesktop ? '' : 'gap-3'} z-10`}>
           <div className="p-1.5 rounded-md bg-green-500/20 group-hover:bg-green-500/30 transition-colors">
             <BarChart3 size={18} className="text-green-400" />
           </div>
-          <h2 className="text-base font-medium">Resumo Financeiro</h2>
+          {(!isCollapsed || !isDesktop) && <h2 className="text-base font-medium">Resumo Financeiro</h2>}
         </div>
-        <div className="absolute left-0 h-full w-1 bg-green-500 transform -translate-x-full group-hover:translate-x-0 transition-transform duration-200"></div>
+        {(!isCollapsed || !isDesktop) && <div className="absolute left-0 h-full w-1 bg-green-500 transform -translate-x-full group-hover:translate-x-0 transition-transform duration-200"></div>}
       </div>
       
       {/* Seção de Meus Clientes (QUARTO) */}
       <div 
-        className={`p-4 py-1.5 border-b border-gray-700/50 flex justify-between items-center cursor-pointer 
+        className={`p-4 py-1.5 border-b border-gray-700/50 flex ${isCollapsed && isDesktop ? 'justify-center' : 'justify-between'} items-center cursor-pointer 
           transition-all duration-200 hover:bg-gray-900/50 relative overflow-hidden group
           ${activeSection === 'clients' ? 'bg-gray-900/80' : ''}`}
         onClick={() => {
@@ -252,18 +320,18 @@ export function Sidebar({
           }
         }}
       >
-        <div className="flex items-center gap-3 z-10">
+        <div className={`flex items-center ${isCollapsed && isDesktop ? '' : 'gap-3'} z-10`}>
           <div className="p-1.5 rounded-md bg-purple-500/20 group-hover:bg-purple-500/30 transition-colors">
             <Users size={18} className="text-purple-400" />
           </div>
-          <h2 className="text-base font-medium">Meus Clientes</h2>
+          {(!isCollapsed || !isDesktop) && <h2 className="text-base font-medium">Clientes</h2>}
         </div>
-        <div className="absolute left-0 h-full w-1 bg-purple-500 transform -translate-x-full group-hover:translate-x-0 transition-transform duration-200"></div>
+        {(!isCollapsed || !isDesktop) && <div className="absolute left-0 h-full w-1 bg-purple-500 transform -translate-x-full group-hover:translate-x-0 transition-transform duration-200"></div>}
       </div>
       
       {/* Seção de Meus Projetos (QUINTO) */}
       <div 
-        className={`p-4 py-1.5 border-b border-gray-900/5 flex justify-between items-center cursor-pointer 
+        className={`p-4 py-1.5 border-b border-gray-900/5 flex ${isCollapsed && isDesktop ? 'justify-center' : 'justify-between'} items-center cursor-pointer 
           transition-all duration-200 hover:bg-gray-900/50 relative overflow-hidden group
           ${activeSection === 'projects' ? 'bg-gray-900/80' : ''}`}
         onClick={() => {
@@ -277,22 +345,22 @@ export function Sidebar({
           }
         }}
       >
-        <div className="flex items-center gap-3 z-10">
+        <div className={`flex items-center ${isCollapsed && isDesktop ? '' : 'gap-3'} z-10`}>
           <div className="p-1.5 rounded-md bg-amber-500/20 group-hover:bg-amber-500/30 transition-colors">
             <LayoutDashboard size={18} className="text-amber-400" />
           </div>
-          <h2 className="text-base font-medium">Meus Projetos</h2>
+          {(!isCollapsed || !isDesktop) && <h2 className="text-base font-medium">Projetos</h2>}
         </div>
-        <div className="absolute left-0 h-full w-1 bg-amber-500 transform -translate-x-full group-hover:translate-x-0 transition-transform duration-200"></div>
+        {(!isCollapsed || !isDesktop) && <div className="absolute left-0 h-full w-1 bg-amber-500 transform -translate-x-full group-hover:translate-x-0 transition-transform duration-200"></div>}
       </div>
       
       <div className="flex-1 overflow-y-auto">
         {sortedProjects.length === 0 ? (
-          <div className="p-4 text-gray-400 text-center">
+          <div className={`p-4 text-gray-400 text-center ${isCollapsed && isDesktop ? 'hidden' : ''}`}>
             Nenhum projeto ativo encontrado
           </div>
         ) : (
-          <div className="pt-2">
+          <div className={`pt-2 ${isCollapsed && isDesktop ? 'hidden' : ''}`}>
             <div className="px-4 py-2 text-gray-400 text-xs font-medium uppercase tracking-wider">
               Projetos Ativos ({sortedProjects.length})
             </div>
@@ -333,31 +401,34 @@ export function Sidebar({
         )}
       </div>
       
-      <div className="p-4 border-t border-gray-700/50">
+      <div className={`p-4 border-t border-gray-700/50 ${isCollapsed && isDesktop ? 'flex flex-col items-center' : ''}`}>
         <button
-          className="w-full flex items-center justify-center gap-2 px-4 py-1 bg-green-600 text-white rounded-md hover:bg-green-800 transition-colors"
+          className={`${isCollapsed && isDesktop ? 'w-10 h-10 p-0' : 'w-full'} flex items-center justify-center gap-2 px-3 py-1 bg-green-600 text-white rounded-md hover:bg-green-800 transition-colors`}
           onClick={onCreateProject}
+          title="Novo Projeto"
         >
           <Plus size={18} />
-          Novo Projeto
+          {(!isCollapsed || !isDesktop) && "Novo Projeto"}
         </button>
         
         {/* Container para os botões Meu Perfil e Sair lado a lado em mobile */}
-        <div className="grid grid-cols-2 md:grid-cols-2 gap-2 mt-2">
+        <div className={`${isCollapsed && isDesktop ? 'flex flex-col gap-2' : 'grid grid-cols-2 md:grid-cols-2 gap-2'} mt-2`}>
           <button
-            className="flex items-center justify-center gap-2 px-4 py-1 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors text-sm md:text-base"
+            className={`flex items-center justify-center gap-2 px-3 py-1 bg-blue-500 text-white rounded-md hover:bg-blue-600 transition-colors text-sm md:text-base ${isCollapsed && isDesktop ? 'w-10 h-10 p-0' : ''}`}
             onClick={onUserProfileView}
+            title="Perfil"
           >
             <User size={18} />
-            <span>Perfil</span>
+            {(!isCollapsed || !isDesktop) && <span>Perfil</span>}
           </button>
           
           <button
-            className="flex items-center justify-center gap-2 px-4 py-1 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors text-sm md:text-base"
+            className={`flex items-center justify-center gap-2 px-3 py-1 bg-red-500 text-white rounded-md hover:bg-red-600 transition-colors text-sm md:text-base ${isCollapsed && isDesktop ? 'w-10 h-10 p-0' : ''}`}
             onClick={handleLogout}
+            title="Sair"
           >
             <LogOut size={18} />
-            <span>Sair</span>
+            {(!isCollapsed || !isDesktop) && <span>Sair</span>}
           </button>
         </div>
       </div>
@@ -374,6 +445,13 @@ export function Sidebar({
   
   .sidebar-active .absolute {
     transform: translateX(0);
+  }
+  
+  /* Adicionar transição suave para a largura da sidebar */
+  .transition-width {
+    transition-property: width;
+    transition-timing-function: cubic-bezier(0.4, 0, 0.2, 1);
+    transition-duration: 300ms;
   }
   `
   }
