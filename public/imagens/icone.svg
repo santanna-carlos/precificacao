@@ -1,0 +1,40 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<!DOCTYPE svg PUBLIC "-//W3C//DTD SVG 1.1//EN" "http://www.w3.org/Graphics/SVG/1.1/DTD/svg11.dtd">
+<!-- Creator: CorelDRAW 2019 (64 Bit) -->
+<svg xmlns="http://www.w3.org/2000/svg" xml:space="preserve" width="512px" height="512px" version="1.1" style="shape-rendering:geometricPrecision; text-rendering:geometricPrecision; image-rendering:optimizeQuality; fill-rule:evenodd; clip-rule:evenodd"
+viewBox="0 0 512 512"
+ xmlns:xlink="http://www.w3.org/1999/xlink">
+ <defs>
+  <font id="FontID0" horiz-adv-x="671" font-variant="normal" style="fill-rule:nonzero" font-style="normal" font-weight="700">
+	<font-face 
+		font-family="Yu Gothic UI">
+		<font-face-src>
+			<font-face-name name="Yu Gothic UI Bold"/>
+		</font-face-src>
+	</font-face>
+   <missing-glyph><path d="M0 0z"/></missing-glyph>
+   <glyph unicode="o" horiz-adv-x="597" d="M295.333 -12.0006c-76.9989,0 -138.666,23.3347 -184.667,70.1664 -46.1652,46.6673 -69.1666,108.668 -69.1666,186 0,84.0002 24.0013,149.667 72.0017,197.001 47.9983,47.165 112.665,70.833 194.166,70.833 78.1654,0 139,-23.0014 182.499,-68.9999 43.6676,-45.834 65.5004,-109.501 65.5004,-191 0,-79.8341 -23.4992,-143.835 -70.4997,-191.835 -47.1672,-48.1649 -110.332,-72.1662 -189.833,-72.1662zm5.4993 433.999c-44.3321,0 -79.332,-15.498 -105,-46.4984 -25.6656,-31.0004 -38.6661,-73.666 -38.6661,-128.168 0,-52.4999 13.1672,-93.8323 39.166,-123.999 26.001,-30.1672 60.8343,-45.3319 104.5,-45.3319 44.5009,0 78.8342,14.8315 102.667,44.4987 24.0013,29.6672 35.9998,71.9995 35.9998,126.832 0,55.0017 -11.9985,97.6673 -35.9998,127.668 -23.8325,30.0005 -58.1658,44.9986 -102.667,44.9986z"/>
+  </font>
+  <style type="text/css">
+   <![CDATA[
+    @font-face { font-family:"Yu Gothic UI";font-variant:normal;font-style:normal;font-weight:bold;src:url("#FontID0") format(svg)}
+    .fil1 {fill:#333333}
+    .fil0 {fill:#506D67}
+    .fil2 {fill:#FF8800}
+    .fil3 {fill:white}
+    .fnt1 {font-weight:bold;font-size:488.63px;font-family:'Yu Gothic UI'}
+    .fnt0 {font-weight:bold;font-size:545.74px;font-family:'Yu Gothic UI'}
+   ]]>
+  </style>
+ </defs>
+ <g id="Camada_x0020_1">
+  <metadata id="CorelCorpID_0Corel-Layer"/>
+  <rect class="fil0" x="0.09" y="0.14" width="512" height="512" rx="58.89" ry="91.01"/>
+  <g id="_2942311945840">
+   <text x="95.13" y="394.57"  class="fil1 fnt0">o</text>
+   <text x="421.03" y="394.57"  class="fil1 fnt1"> </text>
+   <text x="91.14" y="390.58"  class="fil2 fnt0">o</text>
+   <text x="417.04" y="390.58"  class="fil3 fnt1"> </text>
+  </g>
+ </g>
+</svg>
