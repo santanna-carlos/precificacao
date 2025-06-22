@@ -79,7 +79,7 @@ export function Login() {
                   className="w-[253px] sm:w-[300px] md:w-[300px]" // Responsivo: tamanhos diferentes para diferentes breakpoints
                 />
               </div>
-              <span className="text-[#FFFFFF] text-base">Gestão e Precificação para Marceneiros</span>
+              <span className="text-[#FFFFFF] text-base">Gestão e Precificação para Marcenarias</span>
             </div>
           </div>
           
