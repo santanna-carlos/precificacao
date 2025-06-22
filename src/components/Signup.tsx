@@ -44,7 +44,7 @@ export function Signup() {
       setLoading(true);
       setError(null);
       setAsaasError(null);
-
+/*
       // 1. Cadastro no Asaas (primeiro!)
       try {
         await createCustomer({
@@ -62,7 +62,7 @@ export function Signup() {
         setLoading(false);
         return;
       }
-
+*/
       // 2. Cadastro no seu sistema (Supabase)
       const { error } = await signUp(email, password, name, {
         cpfCnpj,
@@ -137,7 +137,7 @@ export function Signup() {
                   className="inline-flex items-center gap-2 mt-4 text-white hover:underline"
                 >
                   <FaWhatsapp size={20} className="text-white" />
-                  Suporte
+                  Precisa de Suporte? Clique Aqui
                 </a>
               </div>
             </div>
@@ -348,6 +348,14 @@ export function Signup() {
                   <Link to="/login" className="text-[#FF8800] hover:text-[#FF8800]">
                     Faça login
                   </Link>
+                  <div className="mt-1 flex items-center justify-center">
+                <a href="https://wa.me/31995993693" target="_blank" rel="noopener noreferrer"
+                  className="inline-flex items-center gap-2 mt-4 text-white hover:underline"
+                >
+                  <FaWhatsapp size={20} className="text-white" />
+                  Suporte
+                </a>
+              </div>
                 </p>
               </div>
             </form>
