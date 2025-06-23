@@ -49,7 +49,7 @@ export function Login() {
       setLoading(true);
       setError(null);
       
-      const { error, success } = ait resetPassword(email);
+      const { error, success } = wait resetPassword(email);
       
       if (error) {
         setError(error.message || 'Erro ao solicitar redefinição de senha');
