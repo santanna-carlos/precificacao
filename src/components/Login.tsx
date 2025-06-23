@@ -49,7 +49,7 @@ export function Login() {
       setLoading(true);
       setError(null);
       
-      const { error, success } = await resetPassword(email);
+      const { error, success } = ait resetPassword(email);
       
       if (error) {
         setError(error.message || 'Erro ao solicitar redefinição de senha');
@@ -247,7 +247,7 @@ export function Login() {
         
         {/* Texto de crédito abaixo da caixa branca */}
         <div className="text-gray-600 text-sm mt-4 text-center">
-          <a href="https://wa.me/31995993693" target="_blank" rel="noopener noreferrer">
+          <a href="https://wa.me/31971308911" target="_blank" rel="noopener noreferrer">
             Desenvolvido por José Carlos Sant'Anna
           </a>
         </div>
