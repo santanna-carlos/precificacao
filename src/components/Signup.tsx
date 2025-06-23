@@ -133,7 +133,7 @@ export function Signup() {
                 Ir para o login
               </Link>
               <div className="mt-1 flex items-center justify-center">
-                <a href="https://wa.me/31995993693" target="_blank" rel="noopener noreferrer"
+                <a href="https://wa.me/31971308911" target="_blank" rel="noopener noreferrer"
                   className="inline-flex items-center gap-2 mt-4 text-white hover:underline"
                 >
                   <FaWhatsapp size={20} className="text-white" />
@@ -349,7 +349,7 @@ export function Signup() {
                     Faça login
                   </Link>
                   <div className="mt-1 flex items-center justify-center">
-                <a href="https://wa.me/31995993693" target="_blank" rel="noopener noreferrer"
+                <a href="https://wa.me/31971308911" target="_blank" rel="noopener noreferrer"
                   className="inline-flex items-center gap-2 mt-4 text-white hover:underline"
                 >
                   <FaWhatsapp size={20} className="text-white" />
@@ -364,7 +364,7 @@ export function Signup() {
         
         {/* Texto de crédito abaixo da caixa branca */}
         <div className="text-gray-600 text-sm mt-4 text-center">
-        <a href="https://wa.me/31995993693" target="_blank" rel="noopener noreferrer">
+        <a href="https://wa.me/31971308911" target="_blank" rel="noopener noreferrer">
             Desenvolvido por José Carlos Sant'Anna
           </a>
         </div>
