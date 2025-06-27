@@ -73,43 +73,37 @@ export function Summary({
     ? frozenApplyTax
     : effectiveApplyTax;
   
-  // Calcular o valor do imposto se aplicável - usar valor congelado se disponível
+  // Calcular o lucro sobre o custo total SEM imposto primeiro
+  const profitAmount = profitMargin > 0 
+    ? (summary.totalCost * profitMargin / (100 - profitMargin))
+    : 0;
+    
+  // Preço base sem imposto usando margem de lucro
+  const basePriceWithMargin = summary.totalCost + profitAmount;
+  
+  // Preço base sem imposto usando markup
+  const basePriceWithMarkup = summary.totalCost * summary.markup;
+  
+  // Preço base sem imposto (depende do tipo de preço escolhido)
+  const basePriceBeforeTax = priceType === 'normal' ? basePriceWithMargin : basePriceWithMarkup;
+  
+  // Calcular o valor do imposto sobre o preço base - usar valor congelado se disponível
   const taxAmount = isProjectTechnicalCompleted && frozenTaxAmount !== undefined
     ? frozenTaxAmount
     : (effectiveApplyTaxFinal && effectiveTaxPercentage > 0 
-      ? summary.totalCost * (effectiveTaxPercentage / 100) 
+      ? basePriceBeforeTax * (effectiveTaxPercentage / 100) 
       : 0);
   
-  // Custo total incluindo imposto (nova base para o cálculo do lucro)
-  const costWithTax = summary.totalCost + taxAmount;
-  
-  // Recalcular a margem de lucro sobre o novo custo total (incluindo imposto)
-  const recalculatedProfitAmount = profitMargin > 0 
-    ? (costWithTax * profitMargin / (100 - profitMargin))
-    : 0;
-    
-  // Preço final recalculado considerando o imposto como parte do custo
-  const recalculatedSalePrice = costWithTax + recalculatedProfitAmount;
-  
-  // Calcular o preço com markup (custo total * fator de markup)
-  const markupPrice = costWithTax * summary.markup;
-  
-  // Usar o preço apropriado com base no tipo selecionado
-  const basePrice = priceType === 'normal' ? recalculatedSalePrice : markupPrice;
-  
-  // Preço sem imposto - para exibição como "Valor base" no card de imposto
-  const priceWithoutTax = basePrice - taxAmount;
-  
-  // Preço final com imposto já incluído no cálculo - usar valor congelado se disponível
-  const displayPrice = isProjectTechnicalCompleted && frozenFinalPrice !== undefined
+  // Preço final com imposto incluído - usar valor congelado se disponível
+  const finalPrice = isProjectTechnicalCompleted && frozenFinalPrice !== undefined
     ? frozenFinalPrice
-    : basePrice;
+    : basePriceBeforeTax + taxAmount;
   
-  // Valor total sem imposto (original)
-  const totalValue = summary.totalCost + summary.profitAmount;
+  // Valor total sem imposto (custo + lucro)
+  const totalValue = summary.totalCost + profitAmount;
   
-  // Valor total com imposto e lucro recalculado
-  const totalValueWithTax = costWithTax + recalculatedProfitAmount;
+  // Valor total considerando imposto
+  const totalValueWithTax = finalPrice;
 
   // Cores para o gráfico
   const COLORS_WITH_TAX = ['#0088FE', '#00C49F', '#FFBB28', '#FF8042', '#FF5733'];
@@ -120,24 +114,21 @@ export function Summary({
         { name: 'Despesas Fixas', value: summary.fixedExpensesTotal },
         { name: 'Despesas Variáveis', value: summary.variableExpensesTotal },
         { name: 'Materiais', value: summary.materialsTotal },
+        { name: 'Lucro', value: profitAmount },
         { name: 'Imposto', value: taxAmount },
-        { name: 'Lucro', value: recalculatedProfitAmount },
       ]
     : [
         { name: 'Despesas Fixas', value: summary.fixedExpensesTotal },
         { name: 'Despesas Variáveis', value: summary.variableExpensesTotal },
         { name: 'Materiais', value: summary.materialsTotal },
-        { name: 'Lucro', value: summary.profitAmount },
+        { name: 'Lucro', value: profitAmount },
       ];
-
-  // Selecionar o conjunto de cores apropriado
-  const chartColors = effectiveApplyTaxFinal && taxAmount > 0 ? COLORS_WITH_TAX : COLORS;
 
   const renderLegend = () => (
     <ul className="flex flex-col gap-1 sm:gap-2">
       {data.map((entry, index) => (
         <li key={`legend-${index}`} className="flex items-center gap-1 sm:gap-2 text-xs sm:text-sm">
-          <span className="w-3 h-3 sm:w-4 sm:h-4 rounded-sm" style={{ backgroundColor: chartColors[index] }} />
+          <span className="w-3 h-3 sm:w-4 sm:h-4 rounded-sm" style={{ backgroundColor: COLORS_WITH_TAX[index] }} />
           <span className="flex-1">{entry.name}</span>
           <span className="font-medium">
             {totalValueWithTax > 0 ? `${((entry.value / totalValueWithTax) * 100).toFixed(1).replace('.', ',')}%` : '0%'}
@@ -212,9 +203,9 @@ export function Summary({
               <div className="flex justify-between text-xs sm:text-sm">
                 <span className="text-gray-600">Lucro:</span>
                 <div className="text-right">
-                  <div>R$ {formatCurrency(recalculatedProfitAmount)}</div>
+                  <div>R$ {formatCurrency(profitAmount)}</div>
                   <div className="text-gray-500 text-2xs sm:text-xs">
-                    {totalValueWithTax > 0 ? `${((recalculatedProfitAmount / totalValueWithTax) * 100).toFixed(1).replace('.', ',')}%` : '0%'}
+                    {totalValueWithTax > 0 ? `${((profitAmount / totalValueWithTax) * 100).toFixed(1).replace('.', ',')}%` : '0%'}
                   </div>
                 </div>
               </div>
@@ -260,10 +251,10 @@ export function Summary({
                 Preço de Venda
               </label>
               <div className="text-lg sm:text-xl font-medium text-green-600">
-                R$ {formatCurrency(recalculatedSalePrice)}
+                R$ {formatCurrency(basePriceWithMargin)}
               </div>
               <div className="text-xs text-gray-500 mt-1">
-                Margem de Lucro: {profitMargin}% (sobre custo + imposto)
+                Margem de Lucro: {profitMargin}% (sobre custo)
               </div>
             </div>
             
@@ -273,7 +264,7 @@ export function Summary({
                 Preço com Markup
               </label>
               <div className="text-lg sm:text-xl font-medium text-green-600">
-                R$ {formatCurrency(markupPrice)}
+                R$ {formatCurrency(basePriceWithMarkup)}
               </div>
               <div className="text-xs text-gray-500 mt-1">
                 Markup: {summary.totalCost > 0 ? formatCurrency(summary.markup) : '1,00'}x sobre o custo total
@@ -296,7 +287,7 @@ export function Summary({
                     onChange={() => onPriceTypeChange('normal')}
                     disabled={isDisabled}
                   />
-                  <span className="ml-2 text-xs sm:text-sm">Preço de Venda (R$ {formatCurrency(recalculatedSalePrice)})</span>
+                  <span className="ml-2 text-xs sm:text-sm">Preço de Venda (R$ {formatCurrency(basePriceWithMargin)})</span>
                 </label>
                 <label className="inline-flex items-center">
                   <input
@@ -309,7 +300,7 @@ export function Summary({
                     disabled={isDisabled}
                   />
                   <span className="ml-2 text-xs sm:text-sm">
-                    Preço com Markup (R$ {formatCurrency(markupPrice)})
+                    Preço com Markup (R$ {formatCurrency(basePriceWithMarkup)})
                   </span>
                 </label>
               </div>
@@ -318,7 +309,7 @@ export function Summary({
               <div className="mt-3 p-2 bg-blue-50 rounded-md border border-blue-100">
                 <div className="text-xs font-medium text-blue-700">Preço selecionado:</div>
                 <div className="text-lg sm:text-xl font-bold text-blue-800">
-                  R$ {formatCurrency(displayPrice)}
+                  R$ {formatCurrency(finalPrice)}
                 </div>
                 
                 {/* Opção para aplicar imposto */}
@@ -352,30 +343,30 @@ export function Summary({
                       ? <div className="mt-2 text-xs">
                           <div className="flex justify-between">
                             <span className="text-gray-600">Valor base:</span>
-                            <span>R$ {formatCurrency(priceWithoutTax)}</span>
+                            <span>R$ {formatCurrency(basePriceBeforeTax)}</span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-gray-600">Imposto ({effectiveTaxPercentage.toFixed(1).replace('.', ',')}% sobre o custo total):</span>
+                            <span className="text-gray-600">Imposto ({effectiveTaxPercentage.toFixed(1).replace('.', ',')}% sobre o preço de venda):</span>
                             <span className="text-orange-600">+ R$ {formatCurrency(frozenTaxAmount)}</span>
                           </div>
                           <div className="flex justify-between font-medium pt-1 border-t border-blue-100">
                             <span>Total com imposto:</span>
-                            <span>R$ {formatCurrency(displayPrice)}</span>
+                            <span>R$ {formatCurrency(finalPrice)}</span>
                           </div>
                         </div>
                       : effectiveApplyTax && taxAmount > 0 && (
                         <div className="mt-2 text-xs">
                           <div className="flex justify-between">
                             <span className="text-gray-600">Valor base:</span>
-                            <span>R$ {formatCurrency(priceWithoutTax)}</span>
+                            <span>R$ {formatCurrency(basePriceBeforeTax)}</span>
                           </div>
                           <div className="flex justify-between">
-                            <span className="text-gray-600">Imposto ({effectiveTaxPercentage.toFixed(1).replace('.', ',')}% sobre o custo total):</span>
+                            <span className="text-gray-600">Imposto ({effectiveTaxPercentage.toFixed(1).replace('.', ',')}% sobre o preço de venda):</span>
                             <span className="text-orange-600">+ R$ {formatCurrency(taxAmount)}</span>
                           </div>
                           <div className="flex justify-between font-medium pt-1 border-t border-blue-100">
                             <span>Total com imposto:</span>
-                            <span>R$ {formatCurrency(displayPrice)}</span>
+                            <span>R$ {formatCurrency(finalPrice)}</span>
                           </div>
                         </div>
                       )}
@@ -408,7 +399,7 @@ export function Summary({
                     dataKey="value"
                   >
                     {data.map((entry, index) => (
-                      <Cell key={`cell-${index}`} fill={chartColors[index % chartColors.length]} />
+                      <Cell key={`cell-${index}`} fill={COLORS_WITH_TAX[index % COLORS_WITH_TAX.length]} />
                     ))}
                   </Pie>
                   <Tooltip 
@@ -434,7 +425,7 @@ export function Summary({
               <h3 className="font-medium text-gray-700 mb-2 sm:mb-3 text-sm sm:text-base">Adicional de Markup</h3>
               <div className="flex justify-between font-medium text-sm sm:text-lg">
                 <span>Valor adicional:</span>
-                <span className="text-green-600">R$ {formatCurrency(markupPrice - recalculatedSalePrice)}</span>
+                <span className="text-green-600">R$ {formatCurrency(basePriceWithMarkup - basePriceWithMargin)}</span>
               </div>
               <div className="text-2xs sm:text-sm text-gray-500 mt-1 sm:mt-2">
                 Valor extra em relação ao preço de venda normal
