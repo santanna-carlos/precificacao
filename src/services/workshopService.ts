@@ -229,7 +229,8 @@ export const saveWorkshopSettings = async (settings: WorkshopSettings): Promise<
     
     if (expensesError) {
       console.error('Erro ao salvar despesas:', expensesError);
-      // Continuar mesmo com erro nas despesas, para não perder as outras configurações
+      // Retornar imediatamente em caso de erro para evitar salvar dados inconsistentes
+      return { data: null, error: expensesError };
     }
 
     // Obter as despesas para montar o objeto WorkshopSettings
