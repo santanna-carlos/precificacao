@@ -174,15 +174,16 @@ export const MyWorkshop: React.FC<MyWorkshopProps> = ({ workshopSettings, onSave
       ...settings,
       lastUpdated: new Date().toISOString()
     };
-    onSaveSettings(updatedSettings);
-    setSettings(updatedSettings);
-
+    
     try {
-      setIsSaving(false);
+      // Aguardar a conclusão do salvamento
+      await onSaveSettings(updatedSettings);
+      setSettings(updatedSettings);
       alert('Configurações da marcenaria atualizadas com sucesso!');
     } catch (err: any) {
-      setIsSaving(false);
       alert('Erro ao atualizar configurações da marcenaria: ' + (err?.message || err));
+    } finally {
+      setIsSaving(false);
     }
   };
   
@@ -556,6 +557,16 @@ export const MyWorkshop: React.FC<MyWorkshopProps> = ({ workshopSettings, onSave
           )}
         </button>
       </div>
+      
+      {/* Overlay de carregamento que bloqueia a tela durante o salvamento */}
+      {isSaving && (
+        <div className="fixed inset-0 bg-black/50 flex items-center justify-center z-50">
+          <div className="bg-white p-4 rounded-md shadow-lg flex items-center">
+            <Loader2 size={24} className="animate-spin mr-2 text-blue-600" />
+            <span className="text-lg font-medium">Salvando configurações...</span>
+          </div>
+        </div>
+      )}
     </div>
   );
 };
